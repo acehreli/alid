@@ -7,7 +7,7 @@ module alid.circularblocks;
 
 import alid.errornogc;
 
-mixin NogcError!"circularblocks";
+private mixin NogcError!"circularblocks";
 
 /**
    Represents an expanding circular buffer implemented as blocks of elements of
@@ -26,6 +26,8 @@ mixin NogcError!"circularblocks";
 */
 struct CircularBlocks(T)
 {
+private:
+
     import alid.blockreusable : ReusableBlock;
 
     ReusableBlock!T[] blocks;    // Where elements are stored
@@ -38,11 +40,13 @@ struct CircularBlocks(T)
     size_t capacity_ = 0;        // Current element capacity
     size_t length_ = 0;          // Total number of elements
 
-    size_t heapAllocations = 0;  // The number of times a block is allocated
-                                 // from the GC heap
+    package size_t heapAllocations = 0;  // The number of times a block is
+                                         // allocated from the GC heap
 
     @disable this();
     @disable this(this);
+
+public:
 
     /**
         Construct an object without any user-provided blocks. All blocks will be
@@ -113,6 +117,9 @@ struct CircularBlocks(T)
         this(buffers[].map!((ref b) => b[]).array);
     }
 
+    /**
+       Clears all blocks in reverse order
+     */
     ~this() scope
     {
         import std.algorithm : all, canFind, map;

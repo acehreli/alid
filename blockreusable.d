@@ -8,7 +8,7 @@ import alid.errornogc : NogcError;
 import std.typecons : Flag, Yes;
 
 // The Error type that ReusableBlock throws
-mixin NogcError!"block";
+private mixin NogcError!"block";
 
 /**
    A reusable memory block for placing objects on.
@@ -24,10 +24,14 @@ mixin NogcError!"block";
 */
 struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
 {
+private:
+
     T * ptr_;           // The address of the beginning of the block
     size_t capacity_;   // Total elements that the block can hold
     size_t head_;       // The block index where element 0 is currently at
     size_t tail_;       // The block index where the next element will be placed at
+
+public:
 
     /**
         Construct an object that will use the provided memory
@@ -261,7 +265,7 @@ struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
             T.stringof, ptr_, capacity_, head_, tail_);
     }
 
-    auto unqualPtr_() inout @nogc nothrow pure scope
+    private auto unqualPtr_() inout @nogc nothrow pure scope
     {
         import std.traits : Unqual;
 
@@ -307,7 +311,7 @@ version (unittest)
 {
     import alid.test : shouldBe;
 
-    void assertInitialState(B)(B b)
+    private void assertInitialState(B)(B b)
     {
         import std.array : empty;
 
@@ -318,7 +322,7 @@ version (unittest)
         assert(b[].empty);
     }
 
-    auto makeValue(T)(int i)
+    private auto makeValue(T)(int i)
     if (is (T == string))
     {
         import std.format : format;
@@ -326,7 +330,7 @@ version (unittest)
         return format!"value_%s"(i);
     }
 
-    auto makeValue(T)(int i)
+    private auto makeValue(T)(int i)
     if (!is (T == string))
     {
         return cast(T)i;

@@ -137,13 +137,13 @@ unittest
     r.length.shouldBe(3);
 }
 
-mixin NogcError!"cached";
+private mixin NogcError!"cached";
 
 /*
   This is the implementation of the actual cache, elements of which will be
   shared by potentially multiple CachedRange ranges.
 */
-struct ElementCache(R)
+private struct ElementCache(R)
 {
     import std.array : empty;
     import std.range : hasLength, ElementType;
@@ -460,6 +460,8 @@ version (unittest)
 //  All pre-condition checks are handled by dispatched ElementCache member functions.
 struct CachedRange(EC)
 {
+private:
+
     EC * elementCache;
     size_t id = size_t.max;
 
@@ -477,6 +479,11 @@ struct CachedRange(EC)
         this.id = id;
     }
 
+public:
+
+    /**
+       Unregisters this slices from the actual `ElementCache` storage.
+     */
     ~this() @nogc nothrow pure @safe scope
     {
         // Prevent running on an .init state, which move() leaves behind

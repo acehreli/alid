@@ -40,7 +40,7 @@ module alid.errornogc;
  */
 mixin template NogcError(string tag, size_t maxDataSize = 1024)
 {
-    class NogcError_ : Error
+    private class NogcError_ : Error
     {
         string msg;                // Main error message
         ubyte[maxDataSize] data_;  // Additional information associated with the error
@@ -105,7 +105,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
       The template constraint is to prevent conflicting mixed-in definitions of
       unrelated NogcError instantiations.
     */
-    static ref theError(string t)() @nogc nothrow @trusted
+    private static ref theError(string t)() @nogc nothrow @trusted
     if (t == tag)
     {
         static ubyte[__traits(classInstanceSize, NogcError_)] mem_;
@@ -120,7 +120,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
         return obj_;
     }
 
-    static string throwNogcError(Data...)(
+    private static string throwNogcError(Data...)(
         in string msg, auto ref Data data, in string file, in int line)
             @nogc nothrow pure @safe
     {
@@ -260,11 +260,11 @@ unittest
 version (unittest)
 {
     // Define NogcError!"foo", which will be thrown by calling fooError():
-    mixin NogcError!"foo";
+    private mixin NogcError!"foo";
 
     // Assert that the expression throws an Error object and that its string
     // representation contains all expected strings.
-    void assertErrorStringContains(void delegate() expr, string[] expected)
+    private void assertErrorStringContains(void delegate() expr, string[] expected)
     {
         bool thrown = false;
 

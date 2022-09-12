@@ -6,7 +6,7 @@ module alid.test;
 
 import alid.errornogc : NogcError;
 
-mixin NogcError!"test";
+private mixin NogcError!"test";
 
 /**
    Compare `a` and `b` and throw an `Error` if they are not equal.
