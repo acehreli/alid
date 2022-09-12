@@ -47,9 +47,13 @@ auto cached(R)(R range, size_t heapBlockCapacity = pageSize / ElementType!R.size
 {
     // Makes a new ElementCache object that will be kept alive collectively with
     // the slices that it produces, first of which is returned.
-    enum elementOffset = 0;
+
     auto elements = CircularBlocks!(ElementType!R)(heapBlockCapacity);
-    return (new ElementCache!R(range, elements)).makeSlice(elementOffset);
+    auto theCacheObject = new ElementCache!R(range, elements, heapBlockCapacity);
+
+    // This first slice starts with offset 0
+    enum elementOffset = 0;
+    return theCacheObject.makeSlice(elementOffset);
 }
 
 /// Ditto
@@ -57,9 +61,13 @@ auto cached(R, size_t N, size_t M)(R range, ref ubyte[N][M] buffers)
 {
     // Makes a new ElementCache object that will be kept alive collectively with
     // the slices that it produces, first of which is returned.
-    enum elementOffset = 0;
+
     auto elements = CircularBlocks!(ElementType!R)(buffers);
-    return (new ElementCache!R(range, elements)).makeSlice(elementOffset);
+    enum heapBlockCapacity = N;
+    auto theCacheObject = new ElementCache!R(range, elements, heapBlockCapacity);
+
+    enum elementOffset = 0;
+    return theCacheObject.makeSlice(elementOffset);
 }
 
 ///
@@ -152,12 +160,17 @@ struct ElementCache(R)
     @disable this(ref const(typeof(this)));
 
     // Takes the source range to consume
-    this(R range, ref CircularBlocks!ET elements) 
+    this(R range, ref CircularBlocks!ET elements, size_t heapBlockCapacity)
     {
         import std.algorithm : move;
 
         this.range = range;
         this.elements = move(elements);
+
+        // Make it the same as heap capacity because it is likely that the
+        // underlying circular buffer will keep the elements alive below this
+        // figure anyway.
+        this.minElementsToDrop = heapBlockCapacity;
     }
 
     // Whether the parameter is valid as a slice id
