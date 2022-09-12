@@ -1,0 +1,66 @@
+{
+	"name": "alid",
+	"targetType": "library",
+	"importPaths": ["."],
+	"sourceFiles": ["package.d"],
+	"description": "Collection of D modules",
+	"authors": ["Ali Çehreli"],
+	"license": "MIT",
+	"subPackages": [
+		{
+			"name": "blockreusable",
+			"description": "Reusable block of elements that can emplace and moveEmplace",
+			"targetType": "library",
+			"dflags": ["-mv=alid.blockreusable=blockreusable.d"],
+			"dependencies": {
+        "alid:errornogc":"*",
+        "alid:test":"*"
+			},
+			"importPaths": ["."],
+			"sourceFiles": ["blockreusable.d"]
+		},
+		{
+			"name": "cached",
+			"description": "Range algorithm to cache elements of InputRanges and present them as ForwardRanges with opIndex",
+			"targetType": "library",
+			"dflags": ["-mv=alid.cached=cached.d"],
+			"dependencies": {
+        "alid:circularblocks":"*",
+        "alid:errornogc":"*",
+        "alid:test":"*"
+			},
+			"importPaths": ["."],
+			"sourceFiles": ["cached.d"]
+		},
+		{
+			"name": "circularblocks",
+			"description": "Expanding circular buffer that uses array of blocks of memory",
+			"targetType": "library",
+			"dflags": ["-mv=alid.circularblocks=circularblocks.d"],
+			"dependencies": {
+        "alid:blockreusable":"*",
+        "alid:errornogc":"*",
+        "alid:test":"*"
+      },
+			"importPaths": ["."],
+			"sourceFiles": ["circularblocks.d"]
+		},
+		{
+			"name": "errornogc",
+			"description": "Defining and throwing of Error subclasses inside @nogc code",
+			"targetType": "library",
+			"dflags": ["-mv=alid.errornogc=errornogc.d"],
+			"importPaths": ["."],
+			"sourceFiles": ["errornogc.d"]
+		},
+		{
+			"name": "test",
+			"description": "Unit test helpers",
+			"targetType": "library",
+			"dflags": ["-mv=alid.test=test.d"],
+			"dependencies": {"alid:errornogc":"*"},
+			"importPaths": ["."],
+			"sourceFiles": ["test.d"]
+		}
+	]
+}
