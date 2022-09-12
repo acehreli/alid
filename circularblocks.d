@@ -51,7 +51,7 @@ struct CircularBlocks(T)
         Params:
 
             heapBlockCapacity = the minimum capacity desired for each heap
-                                block; the actual capacity of each block can be
+                                block; the actual capacity of each block may be
                                 larger
     */
     this(in size_t heapBlockCapacity) nothrow pure @safe scope
@@ -62,9 +62,9 @@ struct CircularBlocks(T)
     /**
         Construct an object that will use the provided buffer
 
-        This constructor will allocate at least one heap block for a sliding
-        window use case. Consider the constructor that takes array of arrays to
-        prevent that.
+        This constructor will allocate at least one additional heap block for a
+        sliding window use case. Consider the constructor that takes array of
+        arrays to prevent that allocation.
 
         Params:
 
@@ -72,7 +72,7 @@ struct CircularBlocks(T)
     */
     this(ubyte[] buffer) nothrow pure scope
     {
-        // Make a 1-element slice without allocating memory and dispatch to an
+        // Make a 1-element slice (without allocating memory) and dispatch to an
         // alternative constructor.
         this((&buffer)[0..1]);
     }
@@ -385,7 +385,7 @@ private:
         T[] tArr;
         tArr.reserve(heapBlockCapacity);
 
-        // Use any available capacity (tArr.capacity can be greater than
+        // Use all extra capacity (tArr.capacity can be greater than
         // heapBlockCapacity)
         const ubyteCapacity = tArr.capacity * T.sizeof;
         auto arr = (cast(ubyte*)tArr.ptr)[0 .. ubyteCapacity];
@@ -486,6 +486,7 @@ unittest
 
     // Adding elements should cause heap block allocations
     c ~= 1;
+    assert(c.capacity != 0);
     c.heapBlockOccupancy.total.shouldBe(1);
     c.heapBlockOccupancy.occupied.shouldBe(1);
 }
@@ -507,7 +508,7 @@ unittest
     const windowWidth = c.capacity - c.length;
 
     // Add and remove equal number of elements for many number of times
-    foreach (i; 0 .. c.capacity * 100 + 17)
+    foreach (i; 0 .. 117)
     {
         iota(windowWidth).each!(i => c ~= i.to!int);
         // Prove that buffer is completely full after the additions
@@ -577,6 +578,8 @@ unittest
     enum dropped = size_t(10);
     c.removeFrontN(dropped);
 
+    assert(end > dropped);
+
     c[0..$].length.shouldBe(end - dropped);
     assert(c[].equal(iota(dropped, end)));
     assert(c[0..$].equal(iota(dropped, end)));
@@ -596,6 +599,9 @@ unittest
     static struct S
     {
         string msg = "initial value";
+
+        // Needed for destroy() to set to the .init value
+        ~this() {}
     }
 
     auto s = S("hello");
@@ -605,4 +611,5 @@ unittest
     c.moveEmplace(s);
     c.length.shouldBe(1);
     c[].front.msg.shouldBe("hello");
+    s.msg.shouldBe("initial value");
 }

@@ -1,5 +1,5 @@
 /**
-   Implements a mixin template to allow throwing Errors from `@nogc` code.
+   Implements a mixin template that allows throwing Errors from `@nogc` code.
  */
 
 module alid.errornogc;
@@ -11,22 +11,22 @@ module alid.errornogc;
 
     The creation of the single instance is `@nogc` because the object that is
     thrown is emplaced on a thread-local memory buffer (both the object and the
-    buffer it contaions are allocated lazily). And throwing is `@nogc` because
+    buffer it contains are allocated lazily). And throwing is `@nogc` because
     the thrown object is the single thread-local instance. Each `NogcError`
-    object can carry aribrary number of data of arbitrary types, which are
+    object can carry arbitrary number of data of arbitrary types, which are
     emplaced inside the single error object. The size of data storage is
     specified with the `maxDataSize` template parameter.
 
     The following examples use the `NogcError!"foo"` type and its associated
-    `fooError()` function, which can be defined similar to the following code:
+    `fooError()` function, which can be defined similarly to the following code:
     ---
-    // Define NogcError!"foo", which will be thrown by calling fooError():
+    // Define NogcError_!"foo", which will be thrown by calling fooError():
     mixin NogcError!"foo";
     ---
 
     Params:
 
-        tag = a differentiating type tag to allow multiple NogcError types with
+        tag = a differentiating type _tag to allow multiple NogcError types with
               their associated single instances
 
         maxDataSize = the size of the buffer to hold additional data accompanying
@@ -38,7 +38,6 @@ module alid.errornogc;
         destroyed. This decision is supported by the realization that the
         program is about to end due to the thrown NogcError.
  */
-
 mixin template NogcError(string tag, size_t maxDataSize = 1024)
 {
     class NogcError_ : Error
@@ -58,7 +57,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
             super(name);
         }
 
-        // Where actual data is at after considering offset
+        // Where actual data is at after considering alignment offset
         inout(ubyte)* dataStart_() inout @nogc nothrow pure @trusted scope
         {
             return data_.ptr + dataOffset;
@@ -103,7 +102,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
     /*
       Allow access to the per-thread NogcError!tag instance.
 
-      The template constraint is to prevent mixed-in conflicting definitions of
+      The template constraint is to prevent conflicting mixed-in definitions of
       unrelated NogcError instantiations.
     */
     static ref theError(string t)() @nogc nothrow @trusted
@@ -137,12 +136,13 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
             enum size = (Data.length ? TD.sizeof : 0);
             enum alignment = max(TD.alignof, (void*).alignof);
 
-            // this should never happen; still being safe before the subtraction below
+            // Although this should never happen, being safe before the
+            // subtraction below
             static assert (alignment > 0);
 
             // We will consider alignment against the worst case run-time
             // situation by assuming that the modulus operation would produce 1
-            // at run time (although very unlikely).
+            // at run time (very unlikely).
             enum maxDataOffset = alignment - 1;
 
             static assert((theError!tag.data_.length >= maxDataOffset) &&
@@ -210,8 +210,8 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
            ` @nogc nothrow pure @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 
-    // This overload is a workaround for some cases where 'file' and 'line'
-    // would become a part of 'data'.
+    // This version is a workaround for some cases where 'file' and 'line' would
+    // become a part of 'data'.
     mixin (`string ` ~ tag ~ `ErrorFileLine(Data...)` ~
            `(in string file, in int line, in string msg, in Data data)` ~
            ` @nogc nothrow pure @safe` ~
@@ -226,7 +226,7 @@ unittest
 
         In this case, the error is thrown while generating the string that the
         failed pre-condition is expecting. Such a string will never arrive at
-        the pre-condition code to be thrown by it.
+        the pre-condition code.
     */
     void test_1(int i)
     in (i > 0, fooError("The value must be positive", i, 42))
@@ -234,8 +234,8 @@ unittest
         // ...
     }
     /*
-        The .msg text of the error contains both the error string and the data
-        that is included in the error.
+        The .msg property of the error contains both the error string and the
+        data that is included in the error.
     */
     assertErrorStringContains(() => test_1(-1), [ "The value must be positive",
                                                   "-1, 42" ]);

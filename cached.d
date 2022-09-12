@@ -1,9 +1,9 @@
-module alid.cached;
-
 /**
    Implements a range algorithm that caches element values turns InputRangess to
    RandomAccessRanges.
  */
+
+module alid.cached;
 
 import alid.errornogc : NogcError;
 import alid.circularblocks : CircularBlocks;
@@ -47,6 +47,11 @@ auto cached(R)(R range, size_t heapBlockCapacity = pageSize / ElementType!R.size
 {
     // Makes a new ElementCache object that will be kept alive collectively with
     // the slices that it produces, first of which is returned.
+
+    if (heapBlockCapacity == 0)
+    {
+        heapBlockCapacity = 100;
+    }
 
     auto elements = CircularBlocks!(ElementType!R)(heapBlockCapacity);
     auto theCacheObject = new ElementCache!R(range, elements, heapBlockCapacity);
@@ -140,36 +145,31 @@ mixin NogcError!"cached";
 */
 struct ElementCache(R)
 {
-    import alid.circularblocks : CircularBlocks;
     import std.array : empty;
     import std.range : hasLength, ElementType;
     import std.traits : isUnsigned;
 
-    // Some useful aliases and values
+    // Useful aliases and values
     alias ET = ElementType!R;
     alias invalidSliceOffset = CachedRange!ElementCache.invalidSliceOffset;
     enum rangeHasLength = hasLength!R;
 
     R range;                       // The source range
     CircularBlocks!ET elements;    // The cached elements
-
     size_t[] sliceOffsets;         // The beginning indexes of slices into 'elements'
+
     size_t liveSliceCount;         // The number of slices that are still being used
     size_t dropLeadingAttempts;    // The number of times we considered but did
                                    // not go with dropping leading elements
 
-    // computeLiveSlices() depends on this fact
-    static assert(isUnsigned!(typeof(sliceOffsets[0])));
-
-    size_t minElementsToDrop;      // The number of elements we consider worthy
-                                   // of dropping
+    size_t minElementsToDrop;      // The number of elements we consider large
+                                   // enough to consider for dropping
 
     Stats stats_;
 
     @disable this(this);
     @disable this(ref const(typeof(this)));
 
-    // Takes the source range to consume
     this(R range, ref CircularBlocks!ET elements, size_t heapBlockCapacity)
     {
         import std.algorithm : move;
@@ -186,7 +186,8 @@ struct ElementCache(R)
     Stats stats() const @nogc nothrow pure @safe scope
     {
         Stats result = stats_;
-        // This value is not kept up-do-date
+        // Unlike other statistics figures, this value is not kept up-do-date by
+        // us
         result.heapAllocations = elements.heapAllocations;
         return result;
     }
@@ -230,23 +231,31 @@ struct ElementCache(R)
             /*
               This slice has popped enough elements for us to consider dropping
               leading elements. But we don't want to rush to it yet because even
-              determining whether there are unused elements or not.
+              determining whether there are unused elements or not incur some
+              cost.
 
               We will apply the heuristic rule of ensuring this condition has
-              been seen at least as many times as there are live
-              slices. (Otherwise, even a single slice is sufficient to hold on
-              to the leading elements.)
+              been seen at least as many times as there are live slices. (Even a
+              single slice is sufficient to hold on to the leading elements.)
             */
             ++dropLeadingAttempts;
+
             if (dropLeadingAttempts >= liveSliceCount) {
                 // We waited long enough
                 dropLeadingAttempts = 0;
                 const minIndex = unreferencedLeadingElements();
+
                 if (minIndex) {
                     // There are leading elements that are not being used
                     // anymore
                     dropLeadingElements(minIndex);
 
+                    // TODO: Commenting out for now because we can't be sure of
+                    //       usage patterns to decide to remove blocks from the
+                    //       underlying storage. (See a related 'version' in one
+                    //       of the unittest blocks.)
+                    version (RUN_COMPACTION)
+                    {
                     // Since we've dropped elements, let's also consider
                     // dropping unused blocks from the underlying circular
                     // buffer.
@@ -258,6 +267,7 @@ struct ElementCache(R)
                         const removedBlocks = elements.compact();
                         stats_.removedBlocks += removedBlocks;
                     }
+                    } // version (none)
                 }
             }
         }
@@ -289,13 +299,6 @@ struct ElementCache(R)
         }
     }
 
-    // Update the liveSliceCount member
-    void computeLiveSlices() {
-        import std.algorithm : count;
-
-        liveSliceCount = sliceOffsets.count!(o => o != invalidSliceOffset);
-    }
-
     // Create and return a RefCounted!CachedRange that initially references all
     // currently cached elements beginning from the specified offset (element
     // index)
@@ -318,7 +321,7 @@ struct ElementCache(R)
             sliceOffsets[id] = offset;
         }
 
-        computeLiveSlices();
+        ++liveSliceCount;
 
         // Return a reference counted object so that its destructor will
         // "unregister" it by removing it from the list of slices.
@@ -331,22 +334,26 @@ struct ElementCache(R)
     in (isValidId_(id), mixin (idError_))
     {
         sliceOffsets[id] = invalidSliceOffset;
-        computeLiveSlices();
+        --liveSliceCount;
     }
 
     // Determine the number of leading elements that are not being referenced
     // (used) by any slice
     size_t unreferencedLeadingElements() @nogc nothrow pure @safe scope
     {
-        size_t minOffset = invalidSliceOffset;
+        auto minOffset = size_t.max;
 
-        foreach (offset; sliceOffsets) {
+        foreach (offset; sliceOffsets)
+        {
             // There is no reason to continue because 0 is the absolute minimum
             // for unsigned types.
-            if (offset == 0) {
-                return 0;
+            if (offset == minOffset.min)
+            {
+                return offset;
             }
-            if (offset < minOffset) {
+
+            if (offset < minOffset)
+            {
                 minOffset = offset;
             }
         }
@@ -355,20 +362,20 @@ struct ElementCache(R)
     }
 
     // Drop specified number of leading elements from the cache
-    void dropLeadingElements(size_t minIndex) @nogc nothrow pure @safe scope
+    void dropLeadingElements(size_t n) @nogc nothrow pure @safe scope
     {
         import std.algorithm : each, filter;
 
         // Drop the unreferenced elements
-        elements.removeFrontN(minIndex);
+        elements.removeFrontN(n);
 
         // Adjust the starting indexes of all slices accordingly.
         sliceOffsets
             .filter!((ref i) => i != invalidSliceOffset)
-            .each!((ref i) => i -= minIndex);
+            .each!((ref i) => i -= n);
 
         ++stats_.leadingDropRuns;
-        stats_.droppedElements += minIndex;
+        stats_.droppedElements += n;
     }
 
     // Ensure that the specified slice has elements as needed
@@ -384,8 +391,7 @@ struct ElementCache(R)
         }
     }
 
-    // Expand the element cache by adding one more element from the original
-    // range
+    // Expand the element cache by adding one more element from the source range
     void expandCache() scope
     in (!range.empty)
     {
@@ -398,8 +404,8 @@ struct ElementCache(R)
 }
 
 /**
-   Statistics about the operation of ElementCache as well as the underlying
-   CircularBlocks that it uses for element storage.
+   Statistics about the operation of `ElementCache` as well as the underlying
+   `CircularBlocks` that it uses for element storage.
 */
 static struct Stats
 {
@@ -424,9 +430,9 @@ static struct Stats
         import std.format : formattedWrite;
 
         sink.formattedWrite!"heap blocks allocated           : %s\n"(heapAllocations);
-        sink.formattedWrite!"leading element drops executions: %s\n"(leadingDropRuns);
+        sink.formattedWrite!"leading-element-drop executions : %s\n"(leadingDropRuns);
         sink.formattedWrite!"total elements dropped          : %s\n"(droppedElements);
-        sink.formattedWrite!"block compaction executions     : %s\n"(compactionRuns);
+        sink.formattedWrite!"block compactions executions    : %s\n"(compactionRuns);
         sink.formattedWrite!"blocks removed due to compaction: %s\n"(removedBlocks);
     }
 }
@@ -440,9 +446,9 @@ version (unittest)
 }
 
 /**
-    Represents a `ForwardRange` (and a `RandomAccessRange` if possible) over the
-    cached elements of a source range. Provides the range algorithm `length()`
-    only if the original range does so.
+    Represents a `ForwardRange` (and a `RandomAccessRange` when possible) over
+    the cached elements of a source range. Provides the range algorithm
+    `length()` only if the source range does so.
 
     Params:
 
@@ -455,16 +461,16 @@ version (unittest)
 struct CachedRange(EC)
 {
     EC * elementCache;
-    size_t id = invalidSliceOffset;
+    size_t id = size_t.max;
 
-    enum invalidSliceOffset = id.max;
+    enum invalidSliceOffset = size_t.max;
 
     // We can't allow copying objects of this type because they are intended to
     // be reference counted. The users must call save() instead.
     @disable this(this);
 
-    // Takes the ElementCache object that this is a slice of and the assigned id
-    // of this slice
+    // Takes the ElementCache object that this is a slice of, and the assigned
+    // id of this slice
     this(EC * elementCache, in size_t id)
     {
         this.elementCache = elementCache;
@@ -554,8 +560,8 @@ struct CachedRange(EC)
 
     // ForwardRange function
 
-    /// Make and return a new `ForwardRange` range object that is the equivalent
-    /// of this range object
+    /// Make and return a new `ForwardRange` object that is the equivalent of
+    /// this range object
     auto save() nothrow pure scope
     {
         return elementCache.saveOf(id);
@@ -567,8 +573,8 @@ struct CachedRange(EC)
         Return a reference to an element
 
         The algorithmic complexity of this function is amortized *O(1)* because
-        it may need to cache elements beyond the currently available last
-        element and the element about to be accessed with index.
+        it might need to cache elements between the currently available last
+        element and the element about to be accessed with the specified index.
 
         Params:
 
@@ -599,9 +605,16 @@ unittest
 {
     // Should compile and work with D arrays
 
-    [1, 2]
-        .cached
-        .equal([1, 2]);
+    assert([1, 2].cached.equal([1, 2]));
+}
+
+unittest
+{
+    // 0 as heapBlockCapacity should work
+
+    auto r = iota(10).cached(0);
+    r[5].shouldBe(5);
+    assert(r.equal(iota(10)));
 }
 
 unittest
@@ -637,7 +650,7 @@ unittest
 
 unittest
 {
-    // isIterable test
+    // Iteration tests
 
     import std.traits : isIterable;
 
@@ -656,6 +669,12 @@ unittest
     }
     r.front.shouldBe(3);
 
+    // Fully consume for code coverage
+    foreach (e; r)
+    {
+    }
+    assert(r.empty);
+
     foreach (i, e; r2)
     {
         e.shouldBe(i + begin);
@@ -666,32 +685,12 @@ unittest
         }
     }
     r2.front.shouldBe(7);
-}
 
-unittest
-{
-    // foreach tests
-
-    auto r = iota(1, 11).cached;
-    auto r2 = r.save();
-
-    size_t sum;
-    foreach (e; r)
-    {
-        sum += e;
-    }
-    sum.shouldBe(55);
-
-    // r should be consumed at this point. (The would need to call .save to
-    // preserve elements of this cache slice.)
-    assert(r.empty);
-    r.length.shouldBe(0);
-
-    // foreach test with counter
+    // Fully consume for code coverage
     foreach (i, e; r2)
     {
-        e.shouldBe(i + 1);
     }
+    assert(r2.empty);
 }
 
 unittest
@@ -732,7 +731,7 @@ unittest
     size_t counter = 0;
 
     // Ensure all operations will be evaluated by searching for nonExistingValue
-    // in all elements of all windows.
+    // in all elements of all sliding window ranges.
     auto found = iota(n)
                  .map!((i)
                        {
@@ -756,21 +755,22 @@ unittest
     import std.array : array;
     import std.range : zip;
 
-    enum N = 10;
+    enum n = 10;
     size_t count;
 
-    auto r = zip(iota(0, N)
+    auto r = zip(iota(0, n)
                  .map!(_ => ++count))
              .cached
-             .filter!(t => t[0] == t[0])
+             .filter!(t => t[0] == t[0])  // Normally, multiple execution
              .array;
 
-    count.shouldBe(N);
+    count.shouldBe(n);
 }
 
 unittest
 {
-    // Uncontrolled access should throw
+    // Out-of-bounds access should throw
+
     import std.exception : assertThrown;
 
     assertThrown!Error(
@@ -790,15 +790,12 @@ unittest
 unittest
 {
     // The following is the code that exposed a difference between Rust's
-    // tuple_window and D's slide. tuple_window uses once() in its implementation
-    // so the generator lambda is executed only once per element. D's slide calls
-    // map's front multiple times. .cached is supposed to prevent that.
+    // tuple_window and D's slide. tuple_window uses once() in its
+    // implementation so the generator lambda is executed only once per
+    // element. D's slide calls map's front multiple times. .cached is supposed
+    // to prevent that.
 
     import std.array : array;
-    // import alid.test : shouldBe;
-    // import std.algorithm;
-    // import std.range;
-    // import std.stdio;
 
     static struct Data
     {
@@ -816,7 +813,7 @@ unittest
                        v ~= i;
                        return Data(v.ptr, v.capacity);
                    })
-             .cached // Once
+             .cached    // The lambda should be executed once per object
              .slide(2)  // [0,1], [1,2], [2,3], etc.
              .filter!((t)
                       {
@@ -838,7 +835,7 @@ unittest
     import std.algorithm : each;
     import std.conv : to;
 
-    // Picking large number of elements along with very small capacity to to
+    // Picking a large number of elements along with very small capacity to
     // cause at least one consideration of dropping the front elements
     enum n = 10_000;
     enum heapBlockCapacity = 5;
@@ -854,7 +851,7 @@ unittest
             }
         }
 
-        // Create a saved states of the range
+        // Create saved states of the range
         auto saveds = iota(4).map!(_ => r.save()).array;
 
         // This operation will ensure populating the element cache
@@ -876,13 +873,19 @@ unittest
         consume(saveds[0]);
     }
 
-    // We expect non-zero figures for all statistics
+    // We expect non-zero figures
     const stats = r.stats;
     assert(stats.heapAllocations);
     assert(stats.leadingDropRuns);
     assert(stats.droppedElements);
-    assert(stats.compactionRuns);
-    assert(stats.removedBlocks);
+    version (RUN_COMPACTION)
+    {
+        assert(stats.compactionRuns);
+        assert(stats.removedBlocks);
+    } else {
+        assert(stats.compactionRuns == 0);
+        assert(stats.removedBlocks == 0);
+    }
 
     stats.to!string;
 }

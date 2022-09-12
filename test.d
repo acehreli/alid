@@ -43,8 +43,6 @@ unittest
 
 unittest
 {
-    // Test shouldBe itself
-
     import std.exception : assertThrown, assertNotThrown;
 
     assertNotThrown(1.shouldBe(1));

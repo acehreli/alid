@@ -7,7 +7,7 @@ module alid.blockreusable;
 import alid.errornogc : NogcError;
 import std.typecons : Flag, Yes;
 
-// The Error type ReusableBlock throws
+// The Error type that ReusableBlock throws
 mixin NogcError!"block";
 
 /**
@@ -21,13 +21,12 @@ mixin NogcError!"block";
 
        T = the type of the elements that will be stored on the block
        dtors = whether to execute destructors of elements upon removing them
-
 */
 struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
 {
     T * ptr_;           // The address of the beginning of the block
     size_t capacity_;   // Total elements that the block can hold
-    size_t head_;       // The block index where element 0 is at
+    size_t head_;       // The block index where element 0 is currently at
     size_t tail_;       // The block index where the next element will be placed at
 
     /**
@@ -112,16 +111,13 @@ struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
                           format!"%s is not copyable"(SourceT.stringof));
 
             emplace(unqualPtr_ + tail_, *elementUnqual);
+            ++tail_;
         }
         else
         {
             // We have an rvalue
-            import core.lifetime : moveEmplace;
-
-            moveEmplace(*elementUnqual, *(unqualPtr_ + tail_));
+            this.moveEmplace(element);
         }
-
-        ++tail_;
     }
 
     /**
@@ -199,7 +195,7 @@ struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
             n = number of elements to remove
     */
     void removeFrontN(in size_t n) scope
-    in (n <= length, blockError("Not enough elements to removFrontN", n, this))
+    in (n <= length, blockError("Not enough elements to removeFrontN", n, this))
     {
         import std.traits : hasElaborateDestructor;
 
@@ -256,7 +252,7 @@ struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
         return ptr[head_ .. tail_];
     }
 
-    /// String representation of this object useful mostly for debugging
+    /// String representation of this object mostly for debugging
     void toString(scope void delegate(in char[]) sink) const scope
     {
         import std.format : formattedWrite;
@@ -276,12 +272,12 @@ struct ReusableBlock(T, Flag!"dtors" dtors = Yes.dtors)
 ///
 unittest
 {
-    // Contructing a block on a piece of memory
+    // Constructing a block on a piece of memory
     ubyte[100] buffer;
     auto b = ReusableBlock!int(buffer);
 
     // Depending on the alignment of the elements, the capacity may be less than
-    // requested
+    // then requested amount
     assert(b.capacity <= buffer.length / int.sizeof);
 
     // Add 2 elements
@@ -347,7 +343,7 @@ unittest
 
 unittest
 {
-    // Test with fundamental types
+    // Test with some fundamental types
 
     import std.array : empty;
     import std.meta : AliasSeq;
@@ -376,8 +372,8 @@ unittest
         // Drop the element
         b.removeFrontN(1);
         b.capacity.shouldBe(cap);
-        // All elements are removed free capacity is increased automatically
-        // the end of element.
+
+        // As all elements are removed, free capacity is increased automatically
         b.freeCapacity.shouldBe(b.capacity);
         b.length.shouldBe(0);
         assert(b.empty);
@@ -388,7 +384,8 @@ unittest
         const f = makeValue!T(43);
         b ~= f;
         b.capacity.shouldBe(cap);
-        // Note: free capacity is reduced
+
+        // Note that free capacity is reduced
         b.freeCapacity.shouldBe(b.capacity - 1);
         b.length.shouldBe(1);
         assert(!b.empty);
@@ -426,7 +423,8 @@ unittest
         b[0..$].shouldBe(expected[7..$]);
         b[2..$-1].shouldBe(expected[9..$-1]);
 
-        // One more clear
+        // Multiple clear calls
+        b.clear();
         b.clear();
         assertInitialState(b);
     }
@@ -443,10 +441,6 @@ unittest
 {
     import std.meta : AliasSeq;
 
-    size_t constructed;
-    size_t copied;
-    size_t destructed;
-
     struct S
     {
         int i = int.max;
@@ -456,18 +450,9 @@ unittest
         {
             this.i = i;
             this.j = j;
-            ++constructed;
         }
 
-        this(this)
-        {
-            ++copied;
-        }
-
-        ~this()
-        {
-            ++destructed;
-        }
+        this(this) @nogc pure @safe scope {}
     }
 
     void test(T)()
@@ -476,16 +461,18 @@ unittest
         auto buffer = new ubyte[length];
         auto b = ReusableBlock!T(buffer);
 
-        // b.emplaceBack(1, 1);
         b ~= T(2, 2);
+
         const n = T(7, 7);
         b~= n;
+
         b.copyBack(n);
         b.copyBack(T(8, 8));
         b.copyBack(n);
+
         auto m = T(3, 3);
         b.moveEmplace(m);
-        // m.shouldBe(m.init);
+        assert(m == S.init);
     }
 
     alias Ts = AliasSeq!(S, const(S));
@@ -531,8 +518,6 @@ unittest
         count.shouldBe(expectedDtorCount);
     }
 
-    // Removing elements should execute the destructors depending on the value
-    // of 'dtors'
     test!(Yes.dtors)(10, 10);
     test!(No.dtors)(10, 0);
 }
