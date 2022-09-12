@@ -134,9 +134,6 @@ unittest
 
 mixin NogcError!"cached";
 
-// Minimum amount of elements in the cache to consider dropping unused elements
-enum minLengthToDrop = 200;
-
 /*
   This is the implementation of the actual cache, elements of which will be
   shared by potentially multiple CachedRange ranges.
@@ -146,6 +143,7 @@ struct ElementCache(R)
     import alid.circularblocks : CircularBlocks;
     import std.array : empty;
     import std.range : hasLength, ElementType;
+    import std.traits : isUnsigned;
 
     // Some useful aliases and values
     alias ET = ElementType!R;
@@ -154,7 +152,17 @@ struct ElementCache(R)
 
     R range;                       // The source range
     CircularBlocks!ET elements;    // The cached elements
+
     size_t[] sliceOffsets;         // The beginning indexes of slices into 'elements'
+    size_t liveSliceCount;         // The number of slices that are still being used
+    size_t dropLeadingAttempts;    // The number of times we considered but did
+                                   // not go with dropping leading elements
+
+    // computeLiveSlices() depends on this fact
+    static assert(isUnsigned!(typeof(sliceOffsets[0])));
+
+    size_t minElementsToDrop;      // The number of elements we consider worthy
+                                   // of dropping
 
     @disable this(this);
     @disable this(ref const(typeof(this)));
@@ -207,6 +215,42 @@ struct ElementCache(R)
     {
         // Trivially increment the offset.
         ++sliceOffsets[id];
+
+        if (sliceOffsets[id] >= minElementsToDrop) {
+            /*
+              This slice has popped enough elements for us to consider dropping
+              leading elements. But we don't want to rush to it yet because even
+              determining whether there are unused elements or not.
+
+              We will apply the heuristic rule of ensuring this condition has
+              been seen at least as many times as there are live
+              slices. (Otherwise, even a single slice is sufficient to hold on
+              to the leading elements.)
+            */
+            ++dropLeadingAttempts;
+            if (dropLeadingAttempts >= liveSliceCount) {
+                // We waited long enough
+                dropLeadingAttempts = 0;
+                const minIndex = unreferencedLeadingElements();
+                if (minIndex) {
+                    // There are minIndex number of elemenst that are not being
+                    // used anymore
+                    dropLeadingElements(minIndex);
+
+                    // Since we've dropped elements, let's also consider
+                    // dropping unused blocks from the underlying circular
+                    // buffer.
+                    const occupancy = elements.heapBlockOccupancy;
+
+                    if (occupancy.occupied &&
+                        (occupancy.total > occupancy.occupied * 4)) {
+                        ++stats_.compactionCount;
+                        const removedBlocks = elements.compact();
+                        stats_.removedBlocks += removedBlocks;
+                    }
+                }
+            }
+        }
     }
 
     // The specified element (index) of the specified slice (id).
@@ -235,6 +279,13 @@ struct ElementCache(R)
         }
     }
 
+    // Update the liveSliceCount member
+    void computeLiveSlices() {
+        import std.algorithm : count;
+
+        liveSliceCount = sliceOffsets.count!(o => o != invalidSliceOffset);
+    }
+
     // Create and return a RefCounted!CachedRange that initially references all
     // currently cached elements beginning from the specified offset (element
     // index)
@@ -257,6 +308,8 @@ struct ElementCache(R)
             sliceOffsets[id] = offset;
         }
 
+        computeLiveSlices();
+
         // Return a reference counted object so that its destructor will
         // "unregister" it by removing it from the list of slices.
         auto slice = CachedRange!ElementCache(&this, id);
@@ -268,23 +321,33 @@ struct ElementCache(R)
     in (isValidId_(id), mixin (idError_))
     {
         sliceOffsets[id] = invalidSliceOffset;
+        computeLiveSlices();
     }
 
-    // Drop the leading elements of the cache that are not referenced by any
-    // slice anymore
-    void dropLeading() @nogc nothrow pure @safe scope
+    // Determine the number of leading elements that are not being referenced
+    // (used) by any slice
+    size_t unreferencedLeadingElements() @nogc nothrow pure @safe scope
     {
-        import std.algorithm : each, filter, minElement;
+        size_t minOffset = invalidSliceOffset;
 
-        // Determine the minimum start index used by any slice.
-        const minIndex = sliceOffsets.minElement;
-
-        // As an optimization, leave early if possible.
-        if (minIndex == 0)
-        {
-            // Even the first element is still in use; nothing to drop.
-            return;
+        foreach (offset; sliceOffsets) {
+            // There is no reason to continue because 0 is the absolute minimum
+            // for unsigned types.
+            if (offset == 0) {
+                return 0;
+            }
+            if (offset < minOffset) {
+                minOffset = offset;
+            }
         }
+
+        return minOffset;
+    }
+
+    // Drop specified number of leading elements from the cache
+    void dropLeadingElements(size_t minIndex) @nogc nothrow pure @safe scope
+    {
+        import std.algorithm : each, filter;
 
         // Drop the unreferenced elements
         elements.removeFrontN(minIndex);
