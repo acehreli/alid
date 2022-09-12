@@ -164,6 +164,8 @@ struct ElementCache(R)
     size_t minElementsToDrop;      // The number of elements we consider worthy
                                    // of dropping
 
+    Stats stats_;
+
     @disable this(this);
     @disable this(ref const(typeof(this)));
 
@@ -179,6 +181,14 @@ struct ElementCache(R)
         // underlying circular buffer will keep the elements alive below this
         // figure anyway.
         this.minElementsToDrop = heapBlockCapacity;
+    }
+
+    Stats stats() const @nogc nothrow pure @safe scope
+    {
+        Stats result = stats_;
+        // This value is not kept up-do-date
+        result.heapAllocations = elements.heapAllocations;
+        return result;
     }
 
     // Whether the parameter is valid as a slice id
@@ -233,8 +243,8 @@ struct ElementCache(R)
                 dropLeadingAttempts = 0;
                 const minIndex = unreferencedLeadingElements();
                 if (minIndex) {
-                    // There are minIndex number of elemenst that are not being
-                    // used anymore
+                    // There are leading elements that are not being used
+                    // anymore
                     dropLeadingElements(minIndex);
 
                     // Since we've dropped elements, let's also consider
@@ -244,7 +254,7 @@ struct ElementCache(R)
 
                     if (occupancy.occupied &&
                         (occupancy.total > occupancy.occupied * 4)) {
-                        ++stats_.compactionCount;
+                        ++stats_.compactionRuns;
                         const removedBlocks = elements.compact();
                         stats_.removedBlocks += removedBlocks;
                     }
@@ -356,6 +366,9 @@ struct ElementCache(R)
         sliceOffsets
             .filter!((ref i) => i != invalidSliceOffset)
             .each!((ref i) => i -= minIndex);
+
+        ++stats_.leadingDropRuns;
+        stats_.droppedElements += minIndex;
     }
 
     // Ensure that the specified slice has elements as needed
@@ -378,25 +391,43 @@ struct ElementCache(R)
     {
         import std.range : front, popFront;
 
-        if ((elements.length >= minLengthToDrop) &&
-            (elements.length == elements.capacity))
-        {
-            /*
-              The array will increase its capacity by potentially relocating the
-              elements.
-
-              This is an opportunity to drop unused elements from the
-              cache. Otherwise, the following append operation would copy the
-              unused leading elements as well and we would incur unnecessary
-              costs of memory consumption and object copying. This would be
-              prohibitive when the source range was infinite.
-            */
-            dropLeading();
-        }
-
         // Transfer one element from the source range to the cache
         elements.emplaceBack(range.front);
         range.popFront();
+    }
+}
+
+/**
+   Statistics about the operation of ElementCache as well as the underlying
+   CircularBlocks that it uses for element storage.
+*/
+static struct Stats
+{
+    /// Number of blocks allocated from the heap by the underlying
+    /// `CircularBlocks` storage
+    size_t heapAllocations;
+
+    /// Number of times the algorithm for dropping leading elements is executed
+    size_t leadingDropRuns;
+
+    /// Number of leading elements dropped
+    size_t droppedElements;
+
+    /// Number of times `CircularBlocks.compact` is executed
+    size_t compactionRuns;
+
+    /// Number of blocks removed due to compaction
+    size_t removedBlocks;
+
+    void toString(scope void delegate(in char[]) sink) const scope
+    {
+        import std.format : formattedWrite;
+
+        sink.formattedWrite!"heap blocks allocated           : %s\n"(heapAllocations);
+        sink.formattedWrite!"leading element drops executions: %s\n"(leadingDropRuns);
+        sink.formattedWrite!"total elements dropped          : %s\n"(droppedElements);
+        sink.formattedWrite!"block compaction executions     : %s\n"(compactionRuns);
+        sink.formattedWrite!"blocks removed due to compaction: %s\n"(removedBlocks);
     }
 }
 
@@ -447,6 +478,15 @@ struct CachedRange(EC)
         {
             elementCache.removeSlice(id);
         }
+    }
+
+    /**
+       Return statistics about the operation of `ElementCache` as well as the
+       underlying `CircularBlocks` that it uses for element storage
+    */
+    Stats stats() const @nogc nothrow pure @safe scope
+    {
+        return elementCache.stats;
     }
 
     /**
@@ -793,21 +833,56 @@ unittest
 
 unittest
 {
-    // A single slice should be sufficient to keep all elements
+    // A single slice should be sufficient to keep all elements alive
 
-    // Picking large number of elements to cause at least one consideration of
-    // dropping the front elements
+    import std.algorithm : each;
+    import std.conv : to;
 
-    enum n = minLengthToDrop * 2;
+    // Picking large number of elements along with very small capacity to to
+    // cause at least one consideration of dropping the front elements
+    enum n = 10_000;
+    enum heapBlockCapacity = 5;
 
-    ubyte[10][2] buffers;
-    auto r = iota(n).cached(buffers);
-    auto s = r.save();
+    auto r = iota(n).cached(1000);
 
-    while (!r.empty)
     {
-        r.popFront();
+        void consume(A)(ref A a)
+        {
+            while(!a.empty)
+            {
+                a.popFront();
+            }
+        }
+
+        // Create a saved states of the range
+        auto saveds = iota(4).map!(_ => r.save()).array;
+
+        // This operation will ensure populating the element cache
+        consume(r);
+
+        // No leading element should have been dropped
+        assert(saveds[0].length == n);
+
+        // Consume all saved states but one
+        foreach (ref s; saveds[1..$])
+        {
+            consume(s);
+        }
+
+        // Still, no leading element should have been dropped
+        assert(saveds[0].length == n);
+
+        // Finally, there should be dropping of leading elements
+        consume(saveds[0]);
     }
 
-    s.length.shouldBe(n);
+    // We expect non-zero figures for all statistics
+    const stats = r.stats;
+    assert(stats.heapAllocations);
+    assert(stats.leadingDropRuns);
+    assert(stats.droppedElements);
+    assert(stats.compactionRuns);
+    assert(stats.removedBlocks);
+
+    stats.to!string;
 }

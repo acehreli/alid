@@ -38,7 +38,7 @@ struct CircularBlocks(T)
     size_t capacity_ = 0;        // Current element capacity
     size_t length_ = 0;          // Total number of elements
 
-    size_t allocatedBlocks = 0;  // The number of times a block is allocated
+    size_t heapAllocations = 0;  // The number of times a block is allocated
                                  // from the GC heap
 
     @disable this();
@@ -133,7 +133,7 @@ struct CircularBlocks(T)
         import std.format : format, formattedWrite;
 
         sink.formattedWrite!"cap:%s len:%s heapBlkCap:%s tail:%s added:%s\n"(
-            capacity, length, heapBlockCapacity, tailBlock, allocatedBlocks);
+            capacity, length, heapBlockCapacity, tailBlock, heapAllocations);
 
         sink.formattedWrite!"occ: %s/%s\n"(
             heapBlockOccupancy.occupied, heapBlockOccupancy.total);
@@ -329,15 +329,25 @@ struct CircularBlocks(T)
 
     /**
        Release all unoccupied heap blocks from the blocks array
+
+       Return:
+
+           number of blocks removed
     */
-    void compact() @nogc nothrow pure @safe scope
+    size_t compact() @nogc nothrow pure @safe scope
     {
         import std.array : empty;
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
 
+        const before = blocks.length;
         blocks = blocks.remove!(b => (b.empty && !canFind(userBlocks, b.ptr)),
                                 SwapStrategy.unstable);
+        const after = blocks.length;
+
         capacity_ = blocks.map!(b => b.capacity).sum;
+
+        assert(before >= after);
+        return before - after;
     }
 
 private:
@@ -381,7 +391,7 @@ private:
         auto arr = (cast(ubyte*)tArr.ptr)[0 .. ubyteCapacity];
 
         addExistingBlock_(arr);
-        ++allocatedBlocks;
+        ++heapAllocations;
     }
 
     void addExistingBlock_(ubyte[] buffer) nothrow pure @safe scope
