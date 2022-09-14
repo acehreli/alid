@@ -97,24 +97,34 @@ public:
     */
     this(ubyte[][] buffers) nothrow pure @safe scope
     {
-        this.userBlocks.reserve(userBlocks.length);
+        this.userBlocks.reserve(buffers.length);
 
-        foreach (ref buffer; buffers)
+        foreach (buffer; buffers)
         {
-            import std.algorithm : max;
-            import std.array : back;
-
-            addExistingBlock_(buffer[]);
-            userBlocks ~= blocks.back.ptr;
-
-            this.heapBlockCapacity = max(this.heapBlockCapacity, blocks.back.capacity);
+            addInitialBlock(buffer);
         }
     }
 
     /// Ditto
-    this(size_t N, size_t M)(ref ubyte[N][M] buffers) {
-        // Dispatch to an alternative constructor with a slice of slices
-        this(buffers[].map!((ref b) => b[]).array);
+    this(size_t N, size_t M)(ref ubyte[N][M] buffers) nothrow pure @safe scope
+    {
+        this.userBlocks.reserve(M);
+
+        foreach (ref buffer; buffers)
+        {
+            addInitialBlock(buffer);
+        }
+    }
+
+    private void addInitialBlock(ubyte[] buffer) nothrow pure @safe scope
+    {
+        import std.algorithm : max;
+        import std.array : back;
+
+        addExistingBlock_(buffer);
+        userBlocks ~= blocks.back.ptr;
+
+        this.heapBlockCapacity = max(this.heapBlockCapacity, blocks.back.capacity);
     }
 
     /**
