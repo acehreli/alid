@@ -311,17 +311,25 @@ private struct ElementCache(R)
         import std.algorithm : find, move;
         import std.typecons : refCounted;
 
-        // Find an unused spot in the slice offsets array.
-        auto found = sliceOffsets.find(invalidSliceOffset);
-        const id = sliceOffsets.length - found.length;
+        auto id = size_t.max;
 
-        if (id == sliceOffsets.length)
+        if (sliceOffsets.length == liveSliceCount)
         {
             // There is no unused spot; add one.
+            id = sliceOffsets.length;
             sliceOffsets ~= offset;
         }
         else
         {
+            // Find an unused spot in the slice offsets array.
+            id = 0;
+            foreach (so; sliceOffsets) {
+                if (so == invalidSliceOffset) {
+                    break;
+                }
+                ++id;
+            }
+            assert(id < sliceOffsets.length, "Inconsistent 'liveSliceCount'");
             sliceOffsets[id] = offset;
         }
 
