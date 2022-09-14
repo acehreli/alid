@@ -58,7 +58,7 @@ public:
                                 block; the actual capacity of each block may be
                                 larger
     */
-    this(in size_t heapBlockCapacity) scope
+    this(in size_t heapBlockCapacity)
     {
         this.heapBlockCapacity = heapBlockCapacity;
     }
@@ -74,7 +74,7 @@ public:
 
             buffer = the buffer to use for the elements
     */
-    this(ubyte[] buffer) scope
+    this(ubyte[] buffer)
     {
         // Make a 1-element slice (without allocating memory) and dispatch to an
         // alternative constructor.
@@ -95,7 +95,7 @@ public:
 
             buffers = the _buffers to use for the elements
     */
-    this(ubyte[][] buffers) scope
+    this(ubyte[][] buffers)
     {
         this.userBlocks.reserve(buffers.length);
 
@@ -106,7 +106,7 @@ public:
     }
 
     /// Ditto
-    this(size_t N, size_t M)(ref ubyte[N][M] buffers) scope
+    this(size_t N, size_t M)(ref ubyte[N][M] buffers)
     {
         this.userBlocks.reserve(M);
 
@@ -116,7 +116,7 @@ public:
         }
     }
 
-    private void addInitialBlock(ubyte[] buffer) scope
+    private void addInitialBlock(ubyte[] buffer)
     {
         import std.algorithm : max;
         import std.array : back;
@@ -130,7 +130,7 @@ public:
     /**
        Clears all blocks in reverse order
      */
-    ~this() scope
+    ~this()
     {
         import std.algorithm : all, canFind, map;
 
@@ -144,7 +144,7 @@ public:
     }
 
     /// String representation of this object useful mostly for debugging
-    void toString(scope void delegate(in char[]) sink) const scope
+    void toString(scope void delegate(in char[]) sink) const
     {
         import std.algorithm : canFind, map;
         import std.format : format, formattedWrite;
@@ -160,13 +160,13 @@ public:
     }
 
     /// Total element _capacity
-    size_t capacity() const scope
+    size_t capacity() const
     {
         return capacity_;
     }
 
     /// Number of elements currently available
-    size_t length() const scope
+    size_t length() const
     {
         return length_;
     }
@@ -193,7 +193,7 @@ public:
 
             element = the _element to move
     */
-    auto moveEmplace(ref T element) scope
+    auto moveEmplace(ref T element)
     {
         ensureFreeSpace_();
         blocks[tailBlock].moveEmplace(element);
@@ -221,7 +221,7 @@ public:
 
             index = the _index of the element to return
     */
-    ref inout(T) opIndex(size_t index) inout scope
+    ref inout(T) opIndex(size_t index) inout
     in (index < length,
         circularblocksError("Index is invalid for length", index, length))
     {
@@ -242,7 +242,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const scope
+    size_t opDollar() const
     {
         return length;
     }
@@ -255,7 +255,7 @@ public:
             from = the index of the first element of the range
             to = the index of the element one beyond the last element of the range
     */
-    auto opSlice(in size_t from, in size_t to) const scope
+    auto opSlice(in size_t from, in size_t to) const
     in (from <= to, circularblocksError("Range begin is greater than end", from, to))
     in (to - from <= length, circularblocksError("Range is too long", from, to, length))
     {
@@ -266,7 +266,7 @@ public:
     }
 
     /// A range to all elements; the same as `[0..$]`
-    auto opSlice() const scope
+    auto opSlice() const
     {
         return this[0..$];
     }
@@ -278,7 +278,7 @@ public:
 
             n = number of elements to remove
     */
-    void removeFrontN(size_t n) scope
+    void removeFrontN(size_t n)
     in (length >= n, circularblocksError("Not enough elements to remove", n, length))
     {
         import std.algorithm : bringToFront;
@@ -333,7 +333,7 @@ public:
 
        Returns: a tuple with two `size_t` members: `.total` and `.occupied`
     */
-    auto heapBlockOccupancy() const scope
+    auto heapBlockOccupancy() const
     {
         import std.algorithm : canFind, count;
         import std.array : empty;
@@ -351,7 +351,7 @@ public:
 
            number of blocks removed
     */
-    size_t compact() scope
+    size_t compact()
     {
         import std.array : empty;
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
@@ -369,7 +369,7 @@ public:
 
 private:
 
-    void ensureFreeSpace_() scope
+    void ensureFreeSpace_()
     {
         import std.array : empty;
 
@@ -394,7 +394,7 @@ private:
         }
     }
 
-    void addHeapBlock_() @trusted scope
+    void addHeapBlock_() @trusted
     {
         import std.algorithm : max;
 
@@ -411,7 +411,7 @@ private:
         ++heapAllocations;
     }
 
-    void addExistingBlock_(ubyte[] buffer) scope
+    void addExistingBlock_(ubyte[] buffer)
     {
         import std.array : back;
 

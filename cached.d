@@ -187,7 +187,7 @@ private struct ElementCache(R)
         this.minElementsToDrop = heapBlockCapacity;
     }
 
-    Stats stats() const scope
+    Stats stats() const
     {
         Stats result = stats_;
         // Unlike other statistics figures, this value is not kept up-do-date by
@@ -197,7 +197,7 @@ private struct ElementCache(R)
     }
 
     // Whether the parameter is valid as a slice id
-    bool isValidId_(in size_t id) const scope
+    bool isValidId_(in size_t id) const
     {
         return id < sliceOffsets.length;
     }
@@ -206,7 +206,7 @@ private struct ElementCache(R)
     enum idError_ = `cachedError("Invalid id", id)`;
 
     // Whether the specified slice is empty
-    bool emptyOf(in size_t id) scope
+    bool emptyOf(in size_t id)
     in (isValidId_(id), mixin (idError_))
     {
         if (!range.empty) {
@@ -217,7 +217,7 @@ private struct ElementCache(R)
     }
 
     // The front element of the specified slice
-    auto frontOf(in size_t id) inout scope
+    auto frontOf(in size_t id) inout
     in (isValidId_(id), mixin (idError_))
     {
         // HACK: The following cast is undefined behavior when this object
@@ -230,7 +230,7 @@ private struct ElementCache(R)
     }
 
     // Pop an element from the specified slice
-    void popFrontOf(in size_t id) scope
+    void popFrontOf(in size_t id)
     in (isValidId_(id), mixin (idError_))
     {
         // Trivially increment the offset.
@@ -283,7 +283,7 @@ private struct ElementCache(R)
     }
 
     // The specified element (index) of the specified slice (id).
-    auto getElementOf(in size_t id, in size_t index) scope
+    auto getElementOf(in size_t id, in size_t index)
     in (isValidId_(id), mixin (idError_))
     {
         expandAsNeeded(id, index + 1);
@@ -292,7 +292,7 @@ private struct ElementCache(R)
 
     // Make and return a new range object that has the same beginning index as
     // the specified slice
-    auto saveOf(in size_t id) scope
+    auto saveOf(in size_t id)
     in (isValidId_(id), mixin (idError_))
     {
         return makeSlice(sliceOffsets[id]);
@@ -301,7 +301,7 @@ private struct ElementCache(R)
     static if (rangeHasLength)
     {
         // The length of the specified slice
-        auto lengthOf(in size_t id) scope
+        auto lengthOf(in size_t id)
         in (isValidId_(id), mixin (idError_))
         {
             return range.length + elements.length - sliceOffsets[id];
@@ -356,7 +356,7 @@ private struct ElementCache(R)
 
     // Determine the number of leading elements that are not being referenced
     // (used) by any slice
-    size_t unreferencedLeadingElements() scope
+    size_t unreferencedLeadingElements()
     {
         auto minOffset = size_t.max;
 
@@ -379,7 +379,7 @@ private struct ElementCache(R)
     }
 
     // Drop specified number of leading elements from the cache
-    void dropLeadingElements(size_t n) scope
+    void dropLeadingElements(size_t n)
     {
         import std.algorithm : each, filter;
 
@@ -396,7 +396,7 @@ private struct ElementCache(R)
     }
 
     // Ensure that the specified slice has elements as needed
-    void expandAsNeeded(in size_t id, in size_t needed) scope
+    void expandAsNeeded(in size_t id, in size_t needed)
     in (isValidId_(id), mixin (idError_))
     in (sliceOffsets[id] <= elements.length,
         cachedError("Invalid element index", id, sliceOffsets[id], elements.length))
@@ -409,7 +409,7 @@ private struct ElementCache(R)
     }
 
     // Expand the element cache by adding one more element from the source range
-    void expandCache() scope
+    void expandCache()
     in (!range.empty)
     {
         import std.range : front, popFront;
@@ -442,7 +442,7 @@ static struct Stats
     /// Number of blocks removed due to compaction
     size_t removedBlocks;
 
-    void toString(scope void delegate(in char[]) sink) const scope
+    void toString(scope void delegate(in char[]) sink) const
     {
         import std.format : formattedWrite;
 
@@ -501,7 +501,7 @@ public:
     /**
        Unregisters this slices from the actual `ElementCache` storage.
      */
-    ~this() scope
+    ~this()
     {
         // Prevent running on an .init state, which move() leaves behind
         if (elementCache !is null)
@@ -514,7 +514,7 @@ public:
        Return statistics about the operation of `ElementCache` as well as the
        underlying `CircularBlocks` that it uses for element storage
     */
-    Stats stats() const scope
+    Stats stats() const
     {
         return elementCache.stats;
     }
@@ -527,7 +527,7 @@ public:
     // a range, the result gets copied to the foreach loop. Unfortunately, this
     // type does not allow copying so we have to support foreach iteration
     // explicitly here.
-    int opApply(int delegate(const(EC.ET)) func) scope
+    int opApply(int delegate(const(EC.ET)) func)
     {
         while(!empty)
         {
@@ -543,7 +543,7 @@ public:
     }
 
     /// Ditto
-    int opApply(int delegate(size_t, const(EC.ET)) func) scope
+    int opApply(int delegate(size_t, const(EC.ET)) func)
     {
         size_t counter;
         while(!empty)
@@ -563,19 +563,19 @@ public:
     // InputRange functions
 
     /// Whether the range is empty
-    auto empty() scope
+    auto empty()
     {
         return elementCache.emptyOf(id);
     }
 
     /// The front element of the range
-    auto front() inout scope
+    auto front() inout
     {
         return elementCache.frontOf(id);
     }
 
     /// Remove the front element from the range
-    void popFront() scope
+    void popFront()
     {
         elementCache.popFrontOf(id);
     }
@@ -584,7 +584,7 @@ public:
 
     /// Make and return a new `ForwardRange` object that is the equivalent of
     /// this range object
-    auto save() scope
+    auto save()
     {
         return elementCache.saveOf(id);
     }
@@ -602,7 +602,7 @@ public:
 
             index = the _index of the element to return
     */
-    auto opIndex(in size_t index) scope
+    auto opIndex(in size_t index)
     {
         return elementCache.getElementOf(id, index);
     }
@@ -616,7 +616,7 @@ public:
 
             This function is available only if the source range provides it.
         */
-        auto length() scope
+        auto length()
         {
             return elementCache.lengthOf(id);
         }

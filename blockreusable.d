@@ -42,7 +42,7 @@ public:
                      bytes of the _buffer may not be used if its `.ptr` property
                      does not match `T.alignof`
     */
-    this(ubyte[] buffer) scope @trusted
+    this(ubyte[] buffer) @trusted
     {
         const extra = cast(ulong)buffer.ptr % T.alignof;
         if (extra) {
@@ -58,33 +58,33 @@ public:
     }
 
     /// Pointer to the beginning of the block
-    inout(T) * ptr() inout scope
+    inout(T) * ptr() inout
     {
         return ptr_;
     }
 
     /// Total _capacity of the block
-    size_t capacity() const scope
+    size_t capacity() const
     {
         return capacity_;
     }
 
     /// Number of elements the block currently has room for
-    size_t freeCapacity() const scope
+    size_t freeCapacity() const
     in (tail_ <= capacity_, blockError("Tail is ahead of capacity", this))
     {
         return capacity - tail_;
     }
 
     /// Current number of elements in the block
-    size_t length() const scope
+    size_t length() const
     in (head_ <= tail_, blockError("Head is ahead of tail", this))
     {
         return tail_ - head_;
     }
 
     /// Whether the block has no elements at all
-    bool empty() const scope
+    bool empty() const
     {
         return length == 0;
     }
@@ -183,7 +183,7 @@ public:
 
             index = the _index of the element to return
     */
-    ref inout(T) opIndex(in size_t index) inout scope
+    ref inout(T) opIndex(in size_t index) inout
     in (index < length, blockError("Invalid index", index, length))
     {
         return ptr_[head_ + index];
@@ -199,7 +199,7 @@ public:
 
             n = number of elements to remove
     */
-    void removeFrontN(in size_t n) scope
+    void removeFrontN(in size_t n)
     in (n <= length, blockError("Not enough elements to removeFrontN", n, this))
     {
         import std.traits : hasElaborateDestructor;
@@ -225,13 +225,13 @@ public:
     }
 
     /// The same as calling `this.removeFrontN(this.length)`
-    void clear() scope
+    void clear()
     {
         removeFrontN(length);
     }
 
     /// Number of elements in the block
-    size_t opDollar() const scope
+    size_t opDollar() const
     {
         return length;
     }
@@ -244,7 +244,7 @@ public:
             from = the index of the first element of the slice
             to = the index of the element one beyond the last element of the slice
     */
-    inout(T)[] opSlice(in size_t from, in size_t to) inout scope
+    inout(T)[] opSlice(in size_t from, in size_t to) inout
     in (from <= to, blockError("Range begin is greater than end", from, to))
     in (to - from <= length, blockError("Range is too long", from, to, length))
     {
@@ -252,13 +252,13 @@ public:
     }
 
     /// A slice to all elements; the same as `[0..$]`
-    inout(T)[] opSlice() inout scope
+    inout(T)[] opSlice() inout
     {
         return ptr[head_ .. tail_];
     }
 
     /// String representation of this object mostly for debugging
-    void toString(scope void delegate(in char[]) sink) const scope
+    void toString(scope void delegate(in char[]) sink) const
     {
         import std.format : formattedWrite;
 
@@ -266,7 +266,7 @@ public:
             T.stringof, ptr_, capacity_, head_, tail_);
     }
 
-    private auto unqualPtr_() inout scope
+    private auto unqualPtr_() inout
     {
         import std.traits : Unqual;
 
@@ -457,7 +457,7 @@ unittest
             this.j = j;
         }
 
-        this(this) scope {}
+        this(this) {}
     }
 
     void test(T)()
