@@ -186,14 +186,12 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
     mixin (`string ` ~ tag ~ `Error(Data...)` ~
            `(in string msg, in Data data,` ~
            ` in string file = __FILE__, in int line = __LINE__)` ~
-           ` @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 
     // This version is a workaround for some cases where 'file' and 'line' would
     // become a part of 'data'.
     mixin (`string ` ~ tag ~ `ErrorFileLine(Data...)` ~
            `(in string file, in int line, in string msg, in Data data)` ~
-           ` @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 }
 

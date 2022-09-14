@@ -58,7 +58,7 @@ public:
                                 block; the actual capacity of each block may be
                                 larger
     */
-    this(in size_t heapBlockCapacity) @safe scope
+    this(in size_t heapBlockCapacity) scope
     {
         this.heapBlockCapacity = heapBlockCapacity;
     }
@@ -95,7 +95,7 @@ public:
 
             buffers = the _buffers to use for the elements
     */
-    this(ubyte[][] buffers) @safe scope
+    this(ubyte[][] buffers) scope
     {
         this.userBlocks.reserve(buffers.length);
 
@@ -106,7 +106,7 @@ public:
     }
 
     /// Ditto
-    this(size_t N, size_t M)(ref ubyte[N][M] buffers) @safe scope
+    this(size_t N, size_t M)(ref ubyte[N][M] buffers) scope
     {
         this.userBlocks.reserve(M);
 
@@ -116,7 +116,7 @@ public:
         }
     }
 
-    private void addInitialBlock(ubyte[] buffer) @safe scope
+    private void addInitialBlock(ubyte[] buffer) scope
     {
         import std.algorithm : max;
         import std.array : back;
@@ -160,13 +160,13 @@ public:
     }
 
     /// Total element _capacity
-    size_t capacity() const @safe scope
+    size_t capacity() const scope
     {
         return capacity_;
     }
 
     /// Number of elements currently available
-    size_t length() const @safe scope
+    size_t length() const scope
     {
         return length_;
     }
@@ -242,7 +242,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const @safe scope
+    size_t opDollar() const scope
     {
         return length;
     }
@@ -255,7 +255,7 @@ public:
             from = the index of the first element of the range
             to = the index of the element one beyond the last element of the range
     */
-    auto opSlice(in size_t from, in size_t to) const @safe scope
+    auto opSlice(in size_t from, in size_t to) const scope
     in (from <= to, circularblocksError("Range begin is greater than end", from, to))
     in (to - from <= length, circularblocksError("Range is too long", from, to, length))
     {
@@ -266,7 +266,7 @@ public:
     }
 
     /// A range to all elements; the same as `[0..$]`
-    auto opSlice() const @safe scope
+    auto opSlice() const scope
     {
         return this[0..$];
     }
@@ -333,7 +333,7 @@ public:
 
        Returns: a tuple with two `size_t` members: `.total` and `.occupied`
     */
-    auto heapBlockOccupancy() const @safe scope
+    auto heapBlockOccupancy() const scope
     {
         import std.algorithm : canFind, count;
         import std.array : empty;
@@ -351,7 +351,7 @@ public:
 
            number of blocks removed
     */
-    size_t compact() @safe scope
+    size_t compact() scope
     {
         import std.array : empty;
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
@@ -369,7 +369,7 @@ public:
 
 private:
 
-    void ensureFreeSpace_() @safe scope
+    void ensureFreeSpace_() scope
     {
         import std.array : empty;
 
@@ -411,7 +411,7 @@ private:
         ++heapAllocations;
     }
 
-    void addExistingBlock_(ubyte[] buffer) @safe scope
+    void addExistingBlock_(ubyte[] buffer) scope
     {
         import std.array : back;
 

@@ -17,7 +17,6 @@ private mixin NogcError!"test";
        b = right-hand side expression
  */
 void assertEqual(A, B)(in A a, in B b, in string file = __FILE__, in int line = __LINE__)
-    @safe
 {
     if (a == b)
     {

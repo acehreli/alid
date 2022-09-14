@@ -58,33 +58,33 @@ public:
     }
 
     /// Pointer to the beginning of the block
-    inout(T) * ptr() inout @safe scope
+    inout(T) * ptr() inout scope
     {
         return ptr_;
     }
 
     /// Total _capacity of the block
-    size_t capacity() const @safe scope
+    size_t capacity() const scope
     {
         return capacity_;
     }
 
     /// Number of elements the block currently has room for
-    size_t freeCapacity() const @safe scope
+    size_t freeCapacity() const scope
     in (tail_ <= capacity_, blockError("Tail is ahead of capacity", this))
     {
         return capacity - tail_;
     }
 
     /// Current number of elements in the block
-    size_t length() const @safe scope
+    size_t length() const scope
     in (head_ <= tail_, blockError("Head is ahead of tail", this))
     {
         return tail_ - head_;
     }
 
     /// Whether the block has no elements at all
-    bool empty() const @safe scope
+    bool empty() const scope
     {
         return length == 0;
     }
@@ -231,7 +231,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const @safe scope
+    size_t opDollar() const scope
     {
         return length;
     }
@@ -457,7 +457,7 @@ unittest
             this.j = j;
         }
 
-        this(this) @safe scope {}
+        this(this) scope {}
     }
 
     void test(T)()
