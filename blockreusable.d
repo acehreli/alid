@@ -42,7 +42,7 @@ public:
                      bytes of the _buffer may not be used if its `.ptr` property
                      does not match `T.alignof`
     */
-    this(ubyte[] buffer) @nogc pure scope @trusted
+    this(ubyte[] buffer) pure scope @trusted
     {
         const extra = cast(ulong)buffer.ptr % T.alignof;
         if (extra) {
@@ -58,33 +58,33 @@ public:
     }
 
     /// Pointer to the beginning of the block
-    inout(T) * ptr() inout @nogc pure @safe scope
+    inout(T) * ptr() inout pure @safe scope
     {
         return ptr_;
     }
 
     /// Total _capacity of the block
-    size_t capacity() const @nogc pure @safe scope
+    size_t capacity() const pure @safe scope
     {
         return capacity_;
     }
 
     /// Number of elements the block currently has room for
-    size_t freeCapacity() const @nogc pure @safe scope
+    size_t freeCapacity() const pure @safe scope
     in (tail_ <= capacity_, blockError("Tail is ahead of capacity", this))
     {
         return capacity - tail_;
     }
 
     /// Current number of elements in the block
-    size_t length() const @nogc pure @safe scope
+    size_t length() const pure @safe scope
     in (head_ <= tail_, blockError("Head is ahead of tail", this))
     {
         return tail_ - head_;
     }
 
     /// Whether the block has no elements at all
-    bool empty() const @nogc pure @safe scope
+    bool empty() const pure @safe scope
     {
         return length == 0;
     }
@@ -183,7 +183,7 @@ public:
 
             index = the _index of the element to return
     */
-    ref inout(T) opIndex(in size_t index) inout @nogc pure scope
+    ref inout(T) opIndex(in size_t index) inout pure scope
     in (index < length, blockError("Invalid index", index, length))
     {
         return ptr_[head_ + index];
@@ -231,7 +231,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const @nogc pure @safe scope
+    size_t opDollar() const pure @safe scope
     {
         return length;
     }
@@ -244,7 +244,7 @@ public:
             from = the index of the first element of the slice
             to = the index of the element one beyond the last element of the slice
     */
-    inout(T)[] opSlice(in size_t from, in size_t to) inout @nogc pure scope
+    inout(T)[] opSlice(in size_t from, in size_t to) inout pure scope
     in (from <= to, blockError("Range begin is greater than end", from, to))
     in (to - from <= length, blockError("Range is too long", from, to, length))
     {
@@ -252,7 +252,7 @@ public:
     }
 
     /// A slice to all elements; the same as `[0..$]`
-    inout(T)[] opSlice() inout @nogc pure scope
+    inout(T)[] opSlice() inout pure scope
     {
         return ptr[head_ .. tail_];
     }
@@ -266,7 +266,7 @@ public:
             T.stringof, ptr_, capacity_, head_, tail_);
     }
 
-    private auto unqualPtr_() inout @nogc pure scope
+    private auto unqualPtr_() inout pure scope
     {
         import std.traits : Unqual;
 
@@ -457,7 +457,7 @@ unittest
             this.j = j;
         }
 
-        this(this) @nogc pure @safe scope {}
+        this(this) pure @safe scope {}
     }
 
     void test(T)()

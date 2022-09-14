@@ -187,7 +187,7 @@ private struct ElementCache(R)
         this.minElementsToDrop = heapBlockCapacity;
     }
 
-    Stats stats() const @nogc pure @safe scope
+    Stats stats() const pure @safe scope
     {
         Stats result = stats_;
         // Unlike other statistics figures, this value is not kept up-do-date by
@@ -197,7 +197,7 @@ private struct ElementCache(R)
     }
 
     // Whether the parameter is valid as a slice id
-    bool isValidId_(in size_t id) const @nogc pure @safe scope
+    bool isValidId_(in size_t id) const pure @safe scope
     {
         return id < sliceOffsets.length;
     }
@@ -230,7 +230,7 @@ private struct ElementCache(R)
     }
 
     // Pop an element from the specified slice
-    void popFrontOf(in size_t id) @nogc pure @safe scope
+    void popFrontOf(in size_t id) pure @safe scope
     in (isValidId_(id), mixin (idError_))
     {
         // Trivially increment the offset.
@@ -301,7 +301,7 @@ private struct ElementCache(R)
     static if (rangeHasLength)
     {
         // The length of the specified slice
-        auto lengthOf(in size_t id) @nogc pure @safe scope
+        auto lengthOf(in size_t id) pure @safe scope
         in (isValidId_(id), mixin (idError_))
         {
             return range.length + elements.length - sliceOffsets[id];
@@ -356,7 +356,7 @@ private struct ElementCache(R)
 
     // Determine the number of leading elements that are not being referenced
     // (used) by any slice
-    size_t unreferencedLeadingElements() @nogc pure @safe scope
+    size_t unreferencedLeadingElements() pure @safe scope
     {
         auto minOffset = size_t.max;
 
@@ -379,7 +379,7 @@ private struct ElementCache(R)
     }
 
     // Drop specified number of leading elements from the cache
-    void dropLeadingElements(size_t n) @nogc pure @safe scope
+    void dropLeadingElements(size_t n) pure @safe scope
     {
         import std.algorithm : each, filter;
 
@@ -501,7 +501,7 @@ public:
     /**
        Unregisters this slices from the actual `ElementCache` storage.
      */
-    ~this() @nogc pure @safe scope
+    ~this() pure @safe scope
     {
         // Prevent running on an .init state, which move() leaves behind
         if (elementCache !is null)
@@ -514,7 +514,7 @@ public:
        Return statistics about the operation of `ElementCache` as well as the
        underlying `CircularBlocks` that it uses for element storage
     */
-    Stats stats() const @nogc pure @safe scope
+    Stats stats() const pure @safe scope
     {
         return elementCache.stats;
     }
@@ -575,7 +575,7 @@ public:
     }
 
     /// Remove the front element from the range
-    void popFront() @nogc pure @safe scope
+    void popFront() pure @safe scope
     {
         elementCache.popFrontOf(id);
     }
@@ -616,7 +616,7 @@ public:
 
             This function is available only if the source range provides it.
         */
-        auto length() @nogc pure @safe scope
+        auto length() pure @safe scope
         {
             return elementCache.lengthOf(id);
         }

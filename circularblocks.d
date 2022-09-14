@@ -160,13 +160,13 @@ public:
     }
 
     /// Total element _capacity
-    size_t capacity() const @nogc pure @safe scope
+    size_t capacity() const pure @safe scope
     {
         return capacity_;
     }
 
     /// Number of elements currently available
-    size_t length() const @nogc pure @safe scope
+    size_t length() const pure @safe scope
     {
         return length_;
     }
@@ -221,7 +221,7 @@ public:
 
             index = the _index of the element to return
     */
-    ref inout(T) opIndex(size_t index) inout @nogc pure scope
+    ref inout(T) opIndex(size_t index) inout pure scope
     in (index < length,
         circularblocksError("Index is invalid for length", index, length))
     {
@@ -242,7 +242,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const @nogc pure @safe scope
+    size_t opDollar() const pure @safe scope
     {
         return length;
     }
@@ -333,7 +333,7 @@ public:
 
        Returns: a tuple with two `size_t` members: `.total` and `.occupied`
     */
-    auto heapBlockOccupancy() const @nogc pure @safe scope
+    auto heapBlockOccupancy() const pure @safe scope
     {
         import std.algorithm : canFind, count;
         import std.array : empty;
@@ -351,7 +351,7 @@ public:
 
            number of blocks removed
     */
-    size_t compact() @nogc pure @safe scope
+    size_t compact() pure @safe scope
     {
         import std.array : empty;
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
