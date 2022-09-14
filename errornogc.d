@@ -64,7 +64,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
 
         // Adapted from object.Throwable.toString
         override
-        void toString(scope void delegate(in char[]) sink) const nothrow scope
+        void toString(scope void delegate(in char[]) sink) const scope
         {
             try
             {
@@ -104,7 +104,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
       The template constraint is to prevent conflicting mixed-in definitions of
       unrelated NogcError instantiations.
     */
-    private static ref theError(string t)() @nogc nothrow @trusted
+    private static ref theError(string t)() @nogc @trusted
     if (t == tag)
     {
         static ubyte[__traits(classInstanceSize, NogcError_)] mem_;
@@ -121,10 +121,10 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
 
     private static string throwNogcError(Data...)(
         in string msg, auto ref Data data, in string file, in int line)
-            @nogc nothrow pure @safe
+            @nogc pure @safe
     {
         static thrower(in string msg, Data data, in string file, in int line)
-            @nogc nothrow @trusted
+            @nogc @trusted
         {
             import core.lifetime : emplace;
             import std.algorithm : max;
@@ -182,7 +182,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
         }
 
         // Adapted from std/regex/internal/ir.d
-        static assumePureFunction(T)(in T t) @nogc nothrow pure @trusted
+        static assumePureFunction(T)(in T t) @nogc pure @trusted
         {
             import std.traits :
                 FunctionAttribute, functionAttributes,
@@ -206,14 +206,14 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
     mixin (`string ` ~ tag ~ `Error(Data...)` ~
            `(in string msg, in Data data,` ~
            ` in string file = __FILE__, in int line = __LINE__)` ~
-           ` @nogc nothrow pure @safe` ~
+           ` @nogc pure @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 
     // This version is a workaround for some cases where 'file' and 'line' would
     // become a part of 'data'.
     mixin (`string ` ~ tag ~ `ErrorFileLine(Data...)` ~
            `(in string file, in int line, in string msg, in Data data)` ~
-           ` @nogc nothrow pure @safe` ~
+           ` @nogc pure @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 }
 
