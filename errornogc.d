@@ -64,7 +64,7 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
 
         // Adapted from object.Throwable.toString
         override
-        void toString(scope void delegate(in char[]) sink) const scope
+        void toString(scope void delegate(in char[]) sink) const nothrow scope
         {
             try
             {
@@ -120,81 +120,61 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
     }
 
     private static string throwNogcError(Data...)(
-        in string msg, auto ref Data data, in string file, in int line)
-            pure @safe
+        string msg, auto ref Data data, string file, in int line) @trusted
     {
-        static thrower(in string msg, Data data, in string file, in int line)
-            @trusted
-        {
-            import core.lifetime : emplace;
-            import std.algorithm : max;
-            import std.format : format;
-            import std.typecons : Tuple;
+        import core.lifetime : emplace;
+        import std.algorithm : max;
+        import std.format : format;
+        import std.typecons : Tuple;
 
-            alias TD = Tuple!Data;
-            enum size = (Data.length ? TD.sizeof : 0);
-            enum alignment = max(TD.alignof, (void*).alignof);
+        alias TD = Tuple!Data;
+        enum size = (Data.length ? TD.sizeof : 0);
+        enum alignment = max(TD.alignof, (void*).alignof);
 
-            // Although this should never happen, being safe before the
-            // subtraction below
-            static assert (alignment > 0);
+        // Although this should never happen, being safe before the
+        // subtraction below
+        static assert (alignment > 0);
 
-            // We will consider alignment against the worst case run-time
-            // situation by assuming that the modulus operation would produce 1
-            // at run time (very unlikely).
-            enum maxDataOffset = alignment - 1;
+        // We will consider alignment against the worst case run-time
+        // situation by assuming that the modulus operation would produce 1
+        // at run time (very unlikely).
+        enum maxDataOffset = alignment - 1;
 
-            static assert((theError!tag.data_.length >= maxDataOffset) &&
-                          (size <= (theError!tag.data_.length - maxDataOffset)),
-                          format!("Also considering the %s-byte alignment of %s, it is" ~
-                                  " not possible to fit %s bytes into a %s-byte buffer.")(
-                                      alignment, Data.stringof, size, maxDataSize));
+        static assert((theError!tag.data_.length >= maxDataOffset) &&
+                      (size <= (theError!tag.data_.length - maxDataOffset)),
+                      format!("Also considering the %s-byte alignment of %s, it is" ~
+                              " not possible to fit %s bytes into a %s-byte buffer.")(
+                                  alignment, Data.stringof, size, maxDataSize));
 
-            theError!tag.msg = msg;
-            theError!tag.file = file;
-            theError!tag.line = line;
+        theError!tag.msg = msg;
+        theError!tag.file = file;
+        theError!tag.line = line;
 
-            // Ensure correct alignment
-            const extra = cast(ulong)theError!tag.data_.ptr % alignment;
-            theError!tag.dataOffset = alignment - extra;
-            theError!tag.dataSize = size;
+        // Ensure correct alignment
+        const extra = cast(ulong)theError!tag.data_.ptr % alignment;
+        theError!tag.dataOffset = alignment - extra;
+        theError!tag.dataSize = size;
 
-            emplace(cast(TD*)(theError!tag.dataStart_), TD(data));
+        emplace(cast(TD*)(theError!tag.dataStart_), TD(data));
 
-            // Save for later printing
-            theError!tag.dataToStr = (sink, ptr)
+        // Save for later printing
+        theError!tag.dataToStr = (sink, ptr)
+                                 {
+                                     import std.conv : to;
+
+                                     auto d = cast(TD*)(ptr);
+                                     static foreach (i; 0 .. TD.length)
                                      {
-                                         import std.conv : to;
-
-                                         auto d = cast(TD*)(ptr);
-                                         static foreach (i; 0 .. TD.length)
+                                         static if (i != 0)
                                          {
-                                             static if (i != 0)
-                                             {
-                                                 sink(", ");
-                                             }
-                                             sink((*d)[i].to!string);
+                                             sink(", ");
                                          }
-                                     };
+                                         sink((*d)[i].to!string);
+                                     }
+                                 };
 
-            // We can finally throw the single error object
-            throw theError!tag;
-        }
-
-        // Adapted from std/regex/internal/ir.d
-        static assumePureFunction(T)(in T t) pure @trusted
-        {
-            import std.traits :
-                FunctionAttribute, functionAttributes,
-                functionLinkage, SetFunctionAttributes;
-
-            enum attrs = functionAttributes!T | FunctionAttribute.pure_;
-            return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs))t;
-        }
-
-        assumePureFunction(&thrower)(msg, data, file, line);
-
-        assert(false, "A NogcError should have been thrown.");
+        // We can finally throw the single error object
+        throw theError!tag;
     }
 
     /*
@@ -206,14 +186,14 @@ mixin template NogcError(string tag, size_t maxDataSize = 1024)
     mixin (`string ` ~ tag ~ `Error(Data...)` ~
            `(in string msg, in Data data,` ~
            ` in string file = __FILE__, in int line = __LINE__)` ~
-           ` pure @safe` ~
+           ` @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 
     // This version is a workaround for some cases where 'file' and 'line' would
     // become a part of 'data'.
     mixin (`string ` ~ tag ~ `ErrorFileLine(Data...)` ~
            `(in string file, in int line, in string msg, in Data data)` ~
-           ` pure @safe` ~
+           ` @safe` ~
            `{ return throwNogcError(msg, data, file, line); }`);
 }
 

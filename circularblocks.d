@@ -58,7 +58,7 @@ public:
                                 block; the actual capacity of each block may be
                                 larger
     */
-    this(in size_t heapBlockCapacity) pure @safe scope
+    this(in size_t heapBlockCapacity) @safe scope
     {
         this.heapBlockCapacity = heapBlockCapacity;
     }
@@ -74,7 +74,7 @@ public:
 
             buffer = the buffer to use for the elements
     */
-    this(ubyte[] buffer) pure scope
+    this(ubyte[] buffer) scope
     {
         // Make a 1-element slice (without allocating memory) and dispatch to an
         // alternative constructor.
@@ -95,7 +95,7 @@ public:
 
             buffers = the _buffers to use for the elements
     */
-    this(ubyte[][] buffers) pure @safe scope
+    this(ubyte[][] buffers) @safe scope
     {
         this.userBlocks.reserve(buffers.length);
 
@@ -106,7 +106,7 @@ public:
     }
 
     /// Ditto
-    this(size_t N, size_t M)(ref ubyte[N][M] buffers) pure @safe scope
+    this(size_t N, size_t M)(ref ubyte[N][M] buffers) @safe scope
     {
         this.userBlocks.reserve(M);
 
@@ -116,7 +116,7 @@ public:
         }
     }
 
-    private void addInitialBlock(ubyte[] buffer) pure @safe scope
+    private void addInitialBlock(ubyte[] buffer) @safe scope
     {
         import std.algorithm : max;
         import std.array : back;
@@ -160,13 +160,13 @@ public:
     }
 
     /// Total element _capacity
-    size_t capacity() const pure @safe scope
+    size_t capacity() const @safe scope
     {
         return capacity_;
     }
 
     /// Number of elements currently available
-    size_t length() const pure @safe scope
+    size_t length() const @safe scope
     {
         return length_;
     }
@@ -193,7 +193,7 @@ public:
 
             element = the _element to move
     */
-    auto moveEmplace(ref T element) pure scope
+    auto moveEmplace(ref T element) scope
     {
         ensureFreeSpace_();
         blocks[tailBlock].moveEmplace(element);
@@ -221,7 +221,7 @@ public:
 
             index = the _index of the element to return
     */
-    ref inout(T) opIndex(size_t index) inout pure scope
+    ref inout(T) opIndex(size_t index) inout scope
     in (index < length,
         circularblocksError("Index is invalid for length", index, length))
     {
@@ -242,7 +242,7 @@ public:
     }
 
     /// Number of elements in the block
-    size_t opDollar() const pure @safe scope
+    size_t opDollar() const @safe scope
     {
         return length;
     }
@@ -255,7 +255,7 @@ public:
             from = the index of the first element of the range
             to = the index of the element one beyond the last element of the range
     */
-    auto opSlice(in size_t from, in size_t to) const pure @safe scope
+    auto opSlice(in size_t from, in size_t to) const @safe scope
     in (from <= to, circularblocksError("Range begin is greater than end", from, to))
     in (to - from <= length, circularblocksError("Range is too long", from, to, length))
     {
@@ -266,7 +266,7 @@ public:
     }
 
     /// A range to all elements; the same as `[0..$]`
-    auto opSlice() const pure @safe scope
+    auto opSlice() const @safe scope
     {
         return this[0..$];
     }
@@ -333,7 +333,7 @@ public:
 
        Returns: a tuple with two `size_t` members: `.total` and `.occupied`
     */
-    auto heapBlockOccupancy() const pure @safe scope
+    auto heapBlockOccupancy() const @safe scope
     {
         import std.algorithm : canFind, count;
         import std.array : empty;
@@ -351,7 +351,7 @@ public:
 
            number of blocks removed
     */
-    size_t compact() pure @safe scope
+    size_t compact() @safe scope
     {
         import std.array : empty;
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
@@ -369,7 +369,7 @@ public:
 
 private:
 
-    void ensureFreeSpace_() pure @safe scope
+    void ensureFreeSpace_() @safe scope
     {
         import std.array : empty;
 
@@ -394,7 +394,7 @@ private:
         }
     }
 
-    void addHeapBlock_() pure @trusted scope
+    void addHeapBlock_() @trusted scope
     {
         import std.algorithm : max;
 
@@ -411,7 +411,7 @@ private:
         ++heapAllocations;
     }
 
-    void addExistingBlock_(ubyte[] buffer) pure @safe scope
+    void addExistingBlock_(ubyte[] buffer) @safe scope
     {
         import std.array : back;
 

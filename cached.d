@@ -187,7 +187,7 @@ private struct ElementCache(R)
         this.minElementsToDrop = heapBlockCapacity;
     }
 
-    Stats stats() const pure @safe scope
+    Stats stats() const @safe scope
     {
         Stats result = stats_;
         // Unlike other statistics figures, this value is not kept up-do-date by
@@ -197,7 +197,7 @@ private struct ElementCache(R)
     }
 
     // Whether the parameter is valid as a slice id
-    bool isValidId_(in size_t id) const pure @safe scope
+    bool isValidId_(in size_t id) const @safe scope
     {
         return id < sliceOffsets.length;
     }
@@ -206,7 +206,7 @@ private struct ElementCache(R)
     enum idError_ = `cachedError("Invalid id", id)`;
 
     // Whether the specified slice is empty
-    bool emptyOf(in size_t id) pure scope
+    bool emptyOf(in size_t id) scope
     in (isValidId_(id), mixin (idError_))
     {
         if (!range.empty) {
@@ -230,7 +230,7 @@ private struct ElementCache(R)
     }
 
     // Pop an element from the specified slice
-    void popFrontOf(in size_t id) pure @safe scope
+    void popFrontOf(in size_t id) @safe scope
     in (isValidId_(id), mixin (idError_))
     {
         // Trivially increment the offset.
@@ -292,7 +292,7 @@ private struct ElementCache(R)
 
     // Make and return a new range object that has the same beginning index as
     // the specified slice
-    auto saveOf(in size_t id) pure scope
+    auto saveOf(in size_t id) scope
     in (isValidId_(id), mixin (idError_))
     {
         return makeSlice(sliceOffsets[id]);
@@ -301,7 +301,7 @@ private struct ElementCache(R)
     static if (rangeHasLength)
     {
         // The length of the specified slice
-        auto lengthOf(in size_t id) pure @safe scope
+        auto lengthOf(in size_t id) @safe scope
         in (isValidId_(id), mixin (idError_))
         {
             return range.length + elements.length - sliceOffsets[id];
@@ -356,7 +356,7 @@ private struct ElementCache(R)
 
     // Determine the number of leading elements that are not being referenced
     // (used) by any slice
-    size_t unreferencedLeadingElements() pure @safe scope
+    size_t unreferencedLeadingElements() @safe scope
     {
         auto minOffset = size_t.max;
 
@@ -379,7 +379,7 @@ private struct ElementCache(R)
     }
 
     // Drop specified number of leading elements from the cache
-    void dropLeadingElements(size_t n) pure @safe scope
+    void dropLeadingElements(size_t n) @safe scope
     {
         import std.algorithm : each, filter;
 
@@ -501,7 +501,7 @@ public:
     /**
        Unregisters this slices from the actual `ElementCache` storage.
      */
-    ~this() pure @safe scope
+    ~this() @safe scope
     {
         // Prevent running on an .init state, which move() leaves behind
         if (elementCache !is null)
@@ -514,7 +514,7 @@ public:
        Return statistics about the operation of `ElementCache` as well as the
        underlying `CircularBlocks` that it uses for element storage
     */
-    Stats stats() const pure @safe scope
+    Stats stats() const @safe scope
     {
         return elementCache.stats;
     }
@@ -563,7 +563,7 @@ public:
     // InputRange functions
 
     /// Whether the range is empty
-    auto empty() pure scope
+    auto empty() scope
     {
         return elementCache.emptyOf(id);
     }
@@ -575,7 +575,7 @@ public:
     }
 
     /// Remove the front element from the range
-    void popFront() pure @safe scope
+    void popFront() @safe scope
     {
         elementCache.popFrontOf(id);
     }
@@ -584,7 +584,7 @@ public:
 
     /// Make and return a new `ForwardRange` object that is the equivalent of
     /// this range object
-    auto save() pure scope
+    auto save() scope
     {
         return elementCache.saveOf(id);
     }
@@ -616,7 +616,7 @@ public:
 
             This function is available only if the source range provides it.
         */
-        auto length() pure @safe scope
+        auto length() @safe scope
         {
             return elementCache.lengthOf(id);
         }
