@@ -275,6 +275,7 @@ public:
 }
 
 ///
+nothrow
 unittest
 {
     // Constructing a block on a piece of memory

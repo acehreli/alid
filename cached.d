@@ -919,5 +919,5 @@ unittest
 
     import std.range : cycle, take;
 
-    [1,2].cycle.take(30).array;
+    iota(10).cached.cycle.take(30);
 }

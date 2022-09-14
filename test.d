@@ -4,10 +4,6 @@
 
 module alid.test;
 
-import alid.errornogc : NogcError;
-
-private mixin NogcError!"test";
-
 /**
    Compare `a` and `b` and throw an `Error` if they are not equal.
 
@@ -24,10 +20,9 @@ void assertEqual(A, B)(in A a, in B b, in string file = __FILE__, in int line = 
     }
     else
     {
-        // We are calling the version of `testError` that takes file and line
-        // information; otherwise, the location information was pointing at this
-        // line. (?)
-        testErrorFileLine(file, line, "ERROR: Expressions are not equal.", a, b);
+        import std.format : format;
+        assert(false, format!"\n%s:%s:Expressions are not equal: %s != %s"(
+                   file, line, a, b));
     }
 }
 
@@ -35,11 +30,13 @@ void assertEqual(A, B)(in A a, in B b, in string file = __FILE__, in int line = 
 alias shouldBe = assertEqual;
 
 ///
+nothrow pure @safe
 unittest
 {
     [1, 2].length.shouldBe(2);
 }
 
+pure
 unittest
 {
     import std.exception : assertThrown, assertNotThrown;

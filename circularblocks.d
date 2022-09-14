@@ -474,6 +474,7 @@ unittest
 }
 
 ///
+nothrow
 unittest
 {
     // This example uses a single user-provided buffer. It is inevitable that
@@ -492,6 +493,7 @@ unittest
 }
 
 ///
+nothrow
 unittest
 {
     // This example does not start with any user-provided buffer

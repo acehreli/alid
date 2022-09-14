@@ -205,7 +205,7 @@ unittest
         failed pre-condition is expecting. Such a string will never arrive at
         the pre-condition code.
     */
-    void test_1(int i)
+    void test_1(int i) @nogc nothrow @safe
     in (i > 0, fooError("The value must be positive", i, 42))
     {
         // ...
@@ -218,7 +218,7 @@ unittest
                                                   "-1, 42" ]);
 
     // Throwing from the body of a function
-    void test_2(int i)
+    void test_2(int i) @nogc nothrow @safe
     {
         string otherData = "hello world";
         fooError("Something went wrong", otherData);
@@ -227,7 +227,7 @@ unittest
                                                  "hello world" ]);
 
     // Throwing without any data
-    void test_3()
+    void test_3() @nogc nothrow @safe
     {
         fooError("Something is bad");
     }
@@ -241,7 +241,8 @@ version (unittest)
 
     // Assert that the expression throws an Error object and that its string
     // representation contains all expected strings.
-    private void assertErrorStringContains(void delegate() expr, string[] expected)
+    private void assertErrorStringContains(
+        void delegate() @nogc nothrow @safe expr, string[] expected)
     {
         bool thrown = false;
 
@@ -299,6 +300,7 @@ unittest
     assertNotThrown!Error(assertErrorStringContains(dg, expected));
 }
 
+@nogc nothrow @safe
 unittest
 {
     // Test that large data is caught at compile time
