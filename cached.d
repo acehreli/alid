@@ -217,10 +217,15 @@ private struct ElementCache(R)
     }
 
     // The front element of the specified slice
-    auto frontOf(in size_t id) scope
+    auto frontOf(in size_t id) inout scope
     in (isValidId_(id), mixin (idError_))
     {
-        expandAsNeeded(id, 1);
+        // HACK: The following cast is undefined behavior when this object
+        // actually is placed on read-only memory. At least we have a note in
+        // the comments of cached() about read-only memory. Still, we don't
+        // expect this being the case because a range object such as this one is
+        // meant to be mutable to be consumed.
+        (cast()this).expandAsNeeded(id, 1);
         return elements[sliceOffsets[id]];
     }
 
@@ -522,12 +527,11 @@ public:
     // a range, the result gets copied to the foreach loop. Unfortunately, this
     // type does not allow copying so we have to support foreach iteration
     // explicitly here.
-    int opApply(int delegate(ref EC.ET) func) scope
+    int opApply(int delegate(const(EC.ET)) func) scope
     {
         while(!empty)
         {
-            auto f = front;
-            int result = func(f);
+            int result = func(front);
             if (result)
             {
                 return result;
@@ -539,13 +543,12 @@ public:
     }
 
     /// Ditto
-    int opApply(int delegate(ref size_t, ref EC.ET) func) scope
+    int opApply(int delegate(size_t, const(EC.ET)) func) scope
     {
         size_t counter;
         while(!empty)
         {
-            auto f = front;
-            int result = func(counter, f);
+            int result = func(counter, front);
             if (result)
             {
                 return result;
@@ -566,7 +569,7 @@ public:
     }
 
     /// The front element of the range
-    auto front() scope
+    auto front() inout scope
     {
         return elementCache.frontOf(id);
     }
@@ -908,4 +911,13 @@ unittest
 
     // For code coverage
     stats.to!string;
+}
+
+unittest
+{
+    // Works with cycle, which has a 'const' front():
+
+    import std.range : cycle, take;
+
+    [1,2].cycle.take(30).array;
 }
