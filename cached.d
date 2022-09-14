@@ -1,6 +1,6 @@
 /**
-   Implements a range algorithm that caches element values turns InputRangess to
-   RandomAccessRanges.
+   Implements a range algorithm that caches element values. It turns
+   `InputRange`s into `ForwardRange`s as well as providing `opIndex`.
  */
 
 module alid.cached;
@@ -22,6 +22,10 @@ import std.range : ElementType;
     The version that takes buffers may never need to allocate memory if the
     number of elements never exceed the capacity of the underlying
     `CircularBlocks`. (See `CircularBlocks`.)
+
+    This `range` may mutate the underlying element blocks as needed even inside
+    its `front() inout ` function. For that reason, the behavior of some of its
+    operations are undefined if the provided `buffers` live on read-only memory.
 
     Params:
 
@@ -432,7 +436,7 @@ static struct Stats
         sink.formattedWrite!"heap blocks allocated           : %s\n"(heapAllocations);
         sink.formattedWrite!"leading-element-drop executions : %s\n"(leadingDropRuns);
         sink.formattedWrite!"total elements dropped          : %s\n"(droppedElements);
-        sink.formattedWrite!"block compactions executions    : %s\n"(compactionRuns);
+        sink.formattedWrite!"block compaction executions     : %s\n"(compactionRuns);
         sink.formattedWrite!"blocks removed due to compaction: %s\n"(removedBlocks);
     }
 }
@@ -845,9 +849,9 @@ unittest
     // Picking a large number of elements along with very small capacity to
     // cause at least one consideration of dropping the front elements
     enum n = 10_000;
-    enum heapBlockCapacity = 5;
+    enum heapBlockCapacity = 100;
 
-    auto r = iota(n).cached(1000);
+    auto r = iota(n).cached(heapBlockCapacity);
 
     {
         void consume(A)(ref A a)
@@ -894,5 +898,6 @@ unittest
         assert(stats.removedBlocks == 0);
     }
 
+    // For code coverage
     stats.to!string;
 }

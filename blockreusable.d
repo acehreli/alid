@@ -38,8 +38,9 @@ public:
 
         Params:
 
-            buffer = the memory _buffer to use for the elements; the `.ptr` property
-                     must match `T.alignof`
+            buffer = the memory _buffer to use for the elements; the first few
+                     bytes of the _buffer may not be used if its `.ptr` property
+                     does not match `T.alignof`
     */
     this(ubyte[] buffer) @nogc nothrow pure scope @trusted
     {
@@ -169,7 +170,7 @@ public:
         import std.format : format;
 
         static assert(__traits(compiles, emplace(ptr_, args)),
-                      format!"%s is not copyable"(T.stringof));
+                      format!"%s is not emplacable from %s"(T.stringof, Args.stringof));
 
         emplace(ptr_ + tail_, args);
         ++tail_;
@@ -281,7 +282,7 @@ unittest
     auto b = ReusableBlock!int(buffer);
 
     // Depending on the alignment of the elements, the capacity may be less than
-    // then requested amount
+    // the requested amount
     assert(b.capacity <= buffer.length / int.sizeof);
 
     // Add 2 elements
@@ -524,4 +525,20 @@ unittest
 
     test!(Yes.dtors)(10, 10);
     test!(No.dtors)(10, 0);
+}
+
+unittest
+{
+    // Emplace back from arguments
+    struct S
+    {
+        int i;
+        string s;
+    }
+
+    ubyte[100] buffer;
+    auto b = ReusableBlock!S(buffer);
+
+    static assert ( __traits(compiles, b.emplaceBack(42, "hello")));
+    static assert (!__traits(compiles, b.emplaceBack("hello", 1.5)));
 }

@@ -45,7 +45,7 @@ unittest
 {
     import std.exception : assertThrown, assertNotThrown;
 
-    assertNotThrown(1.shouldBe(1));
-    assertNotThrown(42.shouldBe(42.0));
+    assertNotThrown!Error(1.shouldBe(1));
+    assertNotThrown!Error(42.shouldBe(42.0));
     assertThrown!Error(1.shouldBe(2));
 }

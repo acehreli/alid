@@ -15,14 +15,13 @@ code--written by Janis, a friend and colleague--produced surprising results. The
 surprises were due to side effects in a generator function similar to the `map`
 lambda in the following code:
 
-```
+```D
     auto r = iota(n)
              .map!((i) {
                      arr ~= i;     // <-- A side effect (adds to an array)
                      return i;
                  })
              .filter!(i => true);  // <-- Side effect is repeated
-}
 ```
 
 Every access to the generated "element" down the execution chain repeats the

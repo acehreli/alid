@@ -10,12 +10,11 @@ module alid.errornogc;
     that class.
 
     The creation of the single instance is `@nogc` because the object that is
-    thrown is emplaced on a thread-local memory buffer (both the object and the
-    buffer it contains are allocated lazily). And throwing is `@nogc` because
-    the thrown object is the single thread-local instance. Each `NogcError`
-    object can carry arbitrary number of data of arbitrary types, which are
-    emplaced inside the single error object. The size of data storage is
-    specified with the `maxDataSize` template parameter.
+    thrown is emplaced on a thread-local memory buffer. And throwing is `@nogc`
+    because the thrown object is the single thread-local instance. Each
+    `NogcError` object can carry arbitrary number of data of arbitrary types,
+    which are emplaced inside the single error object. The size of data storage
+    is specified with the `maxDataSize` template parameter.
 
     The following examples use the `NogcError!"foo"` type and its associated
     `fooError()` function, which can be defined similarly to the following code:
