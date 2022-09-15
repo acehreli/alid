@@ -218,13 +218,13 @@ unittest
                                                   "-1, 42" ]);
 
     // Throwing from the body of a function
-    void test_2(int i) @nogc nothrow @safe
+    void test_2() @nogc nothrow @safe
     {
         string otherData = "hello world";
         fooError("Something went wrong", otherData);
     }
-    assertErrorStringContains(() => test_2(0), [ "Something went wrong",
-                                                 "hello world" ]);
+    assertErrorStringContains(() => test_2(), [ "Something went wrong",
+                                                "hello world" ]);
 
     // Throwing without any data
     void test_3() @nogc nothrow @safe

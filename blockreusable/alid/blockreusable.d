@@ -537,9 +537,7 @@ unittest
         string s;
     }
 
-    ubyte[100] buffer;
-    auto b = ReusableBlock!S(buffer);
-
-    static assert ( __traits(compiles, b.emplaceBack(42, "hello")));
-    static assert (!__traits(compiles, b.emplaceBack("hello", 1.5)));
+    alias B = ReusableBlock!S;
+    static assert ( __traits(compiles, B.init.emplaceBack(42, "hello")));
+    static assert (!__traits(compiles, B.init.emplaceBack("hello", 1.5)));
 }

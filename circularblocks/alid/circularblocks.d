@@ -193,7 +193,7 @@ public:
 
             element = the _element to move
     */
-    auto moveEmplace(ref T element)
+    void moveEmplace(ref T element)
     {
         ensureFreeSpace_();
         blocks[tailBlock].moveEmplace(element);
@@ -207,7 +207,7 @@ public:
 
             args = the constructor arguments to use
     */
-    auto emplaceBack(Args...)(auto ref Args args)
+    void emplaceBack(Args...)(auto ref Args args)
     {
         ensureFreeSpace_();
         blocks[tailBlock].emplaceBack(args);
@@ -608,7 +608,7 @@ unittest
 {
     // The string representation
 
-    auto c = CircularBlocks!string(new ubyte[10]).to!string;
+    assert(CircularBlocks!string(new ubyte[10]).to!string.length);
 }
 
 unittest

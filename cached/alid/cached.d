@@ -107,17 +107,19 @@ unittest
     import std.algorithm : splitter;
     import std.range : popFrontN;
 
-    auto lines = "monday,tuesday,wednesday,thursday";
-
-    auto s = lines.splitter(',');
-    auto c = s.cached;
+    // Make an InputRange
+    auto source() {
+        auto lines = "monday,tuesday,wednesday,thursday,friday,saturday,sunday";
+        return lines.splitter(',');
+    }
 
     // The source range does not provide random access:
-    static assert(!__traits(compiles, s[0]));
+    static assert(!__traits(compiles, source[0]));
 
     // The cached range does:
-    assert(c[2] == "wednesday");
-    assert(c[1] == "tuesday");
+    auto c = source.cached;
+    assert(c[2] == "wednesday");  // Note out-of-order indexing
+    assert(c[1] == "tuesday");    // This element is ready thanks to the previous line
 
     c.popFrontN(3);
 
@@ -442,6 +444,7 @@ static struct Stats
     /// Number of blocks removed due to compaction
     size_t removedBlocks;
 
+    /// String representation of the statistics
     void toString(scope void delegate(in char[]) sink) const
     {
         import std.format : formattedWrite;
@@ -460,6 +463,14 @@ version (unittest)
     import std.algorithm : equal, filter, map;
     import std.array : array;
     import std.range : iota, slide;
+
+    void consume(A)(ref A a)
+    {
+        while(!a.empty)
+        {
+            a.popFront();
+        }
+    }
 }
 
 /**
@@ -731,14 +742,11 @@ unittest
 
     import std.range : hasLength;
 
-    {
-        auto r = iota(10).cached;
-        static assert (hasLength!(typeof(r)));
-    }
-    {
-        auto r = iota(10).filter!(i => i % 2).cached;
-        static assert (!hasLength!(typeof(r)));
-    }
+    // Has length because iota has length
+    static assert ( hasLength!(typeof(iota(10).cached)));
+
+    // Does not have length because filter cannot have length
+    static assert (!hasLength!(typeof(iota(10).filter!(i => i % 2).cached)));
 }
 
 unittest
@@ -754,15 +762,15 @@ unittest
 
     // Ensure all operations will be evaluated by searching for nonExistingValue
     // in all elements of all sliding window ranges.
-    auto found = iota(n)
-                 .map!((i)
-                       {
-                           ++counter;
-                           return i;
-                       })
-                 .cached
-                 .slide(3)
-                 .find!(window => !window.find(nonExistingValue).empty);
+    const found = iota(n)
+                  .map!((i)
+                        {
+                            ++counter;
+                            return i;
+                        })
+                  .cached
+                  .slide(3)
+                  .find!(window => !window.find(nonExistingValue).empty);
 
     // Validate the test
     assert(found.empty);
@@ -774,7 +782,6 @@ unittest
 {
     // Test that map expressions used by zip are cached as filter works on them.
 
-    import std.array : array;
     import std.range : zip;
 
     enum n = 10;
@@ -783,8 +790,8 @@ unittest
     auto r = zip(iota(0, n)
                  .map!(_ => ++count))
              .cached
-             .filter!(t => t[0] == t[0])  // Normally, multiple execution
-             .array;
+             .filter!(t => t[0] == t[0]);  // Normally, multiple executions
+    consume(r);
 
     count.shouldBe(n);
 }
@@ -817,8 +824,6 @@ unittest
     // element. D's slide calls map's front multiple times. .cached is supposed
     // to prevent that.
 
-    import std.array : array;
-
     static struct Data
     {
         int * ptr;
@@ -844,8 +849,8 @@ unittest
                           const curr = t.front.ptr;
                           return prev != curr;
                       })
-             .map!(t => t.front.capacity)
-             .array;
+             .map!(t => t.front.capacity);
+    consume(r);
 
     v.length.shouldBe(n);
 }
@@ -865,14 +870,6 @@ unittest
     auto r = iota(n).cached(heapBlockCapacity);
 
     {
-        void consume(A)(ref A a)
-        {
-            while(!a.empty)
-            {
-                a.popFront();
-            }
-        }
-
         // Create saved states of the range
         auto saveds = iota(4).map!(_ => r.save()).array;
 
