@@ -1,7 +1,7 @@
 {
 	"name": "alid",
   "targetType": "sourceLibrary",
-	"description": "Collection of D modules",
+	"description": "'cached' that stores elements of InputRanges as ForwardRanges efficiently, and other modules",
 	"authors": ["Ali Çehreli"],
 	"license": "MIT",
   "sourceFiles": [
@@ -11,6 +11,12 @@
      "circularblocks/alid/circularblocks.d",
      "errornogc/alid/errornogc.d",
      "test/alid/test.d"],
+  "importPaths": [
+     "blockreusable",
+     "cached",
+     "circularblocks",
+     "errornogc",
+     "test"],
 	"subPackages": [
 		{
 			"name": "blockreusable",
