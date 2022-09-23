@@ -94,9 +94,9 @@ unittest
 
     // There are 3 sliding windows of width 2 over 4 elements
     r.length.shouldBe(3);
-    assert(r[0].equal([0, 1]));
-    assert(r[1].equal([1, 4]));
-    assert(r[2].equal([4, 9]));
+    r[0].shouldBe([0, 1]);
+    r[1].shouldBe([1, 4]);
+    r[2].shouldBe([4, 9]);
 }
 
 ///
@@ -638,7 +638,7 @@ unittest
 {
     // Should compile and work with D arrays
 
-    assert([1, 2].cached.equal([1, 2]));
+    [1, 2].cached.shouldBe([1, 2]);
 }
 
 unittest
@@ -647,7 +647,7 @@ unittest
 
     auto r = iota(10).cached(0);
     r[5].shouldBe(5);
-    assert(r.equal(iota(10)));
+    r.shouldBe(iota(10));
 }
 
 unittest
@@ -666,17 +666,17 @@ unittest
     r.front.shouldBe(2);
     r.length.shouldBe(9);
 
-    assert(r.take(4).equal(iota(2, 6)));
+    r.take(4).shouldBe(iota(2, 6));
     assert(!r.empty);
     r.front.shouldBe(6);
     r.length.shouldBe(5);
 
     auto r2 = r.save();
-    assert(r2.equal(iota(6, 11)));
+    r2.shouldBe(iota(6, 11));
     assert(r2.empty);
     r2.length.shouldBe(0);
 
-    assert(r.equal(iota(6, 11)));
+    r.shouldBe(iota(6, 11));
     assert(r.empty);
     r.length.shouldBe(0);
 }

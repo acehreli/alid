@@ -12,9 +12,20 @@ module alid.test;
        a = left-hand side expression
        b = right-hand side expression
  */
-void assertEqual(A, B)(in A a, in B b, in string file = __FILE__, in int line = __LINE__)
+void assertEqual(A, B)(A a, B b, in string file = __FILE__, in int line = __LINE__)
 {
-    if (a == b)
+    import std.algorithm : equal;
+
+    static if (__traits(compiles, a.equal(b)))
+    {
+        alias expr = () => a.equal(b);
+    }
+    else
+    {
+        alias expr = () => a == b;
+    }
+
+    if (expr())
     {
         // All good
     }
@@ -44,4 +55,11 @@ unittest
     assertNotThrown!Error(1.shouldBe(1));
     assertNotThrown!Error(42.shouldBe(42.0));
     assertThrown!Error(1.shouldBe(2));
+}
+
+pure
+unittest
+{
+    import std.range : iota;
+    iota(10).shouldBe(iota(0, 10, 1));
 }

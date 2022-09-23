@@ -586,7 +586,7 @@ unittest
 {
     // Test the range interface
 
-    import std.algorithm : each, equal;
+    import std.algorithm : each;
 
     auto c = CircularBlocks!size_t(1024);
 
@@ -600,8 +600,8 @@ unittest
     assert(end > dropped);
 
     c[0..$].length.shouldBe(end - dropped);
-    assert(c[].equal(iota(dropped, end)));
-    assert(c[0..$].equal(iota(dropped, end)));
+    c[].shouldBe(iota(dropped, end));
+    c[0..$].shouldBe(iota(dropped, end));
 }
 
 unittest
