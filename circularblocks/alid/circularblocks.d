@@ -43,8 +43,8 @@ private:
     package size_t heapAllocations = 0;  // The number of times a block is
                                          // allocated from the GC heap
 
-    @disable this();
-    @disable this(this);
+    private @disable this();
+    private @disable this(this);
 
 public:
 
@@ -357,6 +357,10 @@ public:
         import std.algorithm : canFind, map, remove, sum, SwapStrategy;
 
         const before = blocks.length;
+
+        // Because all empty blocks are at the back, removing with .unstable causes the reordering
+        // of only the empty userBlocks. Blocks that actively carry elements should not be
+        // affected. (We have a unittest block for this case.)
         blocks = blocks.remove!(b => (b.empty && !canFind(userBlocks, b.ptr)),
                                 SwapStrategy.unstable);
         const after = blocks.length;
@@ -538,7 +542,6 @@ unittest
     // No heap block should have been allocated
     c.heapBlockOccupancy.total.shouldBe(0);
 }
-
 
 version (unittest)
 {

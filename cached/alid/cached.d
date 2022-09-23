@@ -14,6 +14,9 @@ import std.range : ElementType;
     A _range algorithm that caches the elements of a _range by evaluating them
     only once.
 
+    Makes a new cache object that will be kept alive collectively with the
+    slices that it produces, first of which is returned.
+
     As a natural benefit of caching, the returned _range is a `ForwardRange`
     even if the source _range is an `InputRange`. Although the returned _range
     provides `opIndex`, it is a `RandomAccessRange` only if the source _range
@@ -33,9 +36,14 @@ import std.range : ElementType;
 
         heapBlockCapacity = the minimum capacity to use for `CircularBlocks`,
                             which is used as storage for the _cached elements;
-                            the default value attemps to use one page of memory
+                            the default value attempts to use one page of memory
 
         buffers = the _buffers to be used by the `CircularBlocks` member
+
+    Returns:
+
+        A _range that participates in the collective ownership of the _cached
+        elements
 
     Bugs:
 
@@ -49,9 +57,6 @@ import std.range : ElementType;
 */
 auto cached(R)(R range, size_t heapBlockCapacity = pageSize / ElementType!R.sizeof)
 {
-    // Makes a new ElementCache object that will be kept alive collectively with
-    // the slices that it produces, first of which is returned.
-
     if (heapBlockCapacity == 0)
     {
         heapBlockCapacity = 100;
@@ -68,9 +73,6 @@ auto cached(R)(R range, size_t heapBlockCapacity = pageSize / ElementType!R.size
 /// Ditto
 auto cached(R, size_t N, size_t M)(R range, ref ubyte[N][M] buffers)
 {
-    // Makes a new ElementCache object that will be kept alive collectively with
-    // the slices that it produces, first of which is returned.
-
     auto elements = CircularBlocks!(ElementType!R)(buffers);
     enum heapBlockCapacity = N;
     auto theCacheObject = new ElementCache!R(range, elements, heapBlockCapacity);
@@ -365,7 +367,8 @@ private struct ElementCache(R)
         foreach (offset; sliceOffsets)
         {
             // There is no reason to continue because 0 is the absolute minimum
-            // for unsigned types.
+            // for unsigned types. But let's verify our assumption.
+            static assert(isUnsigned!(typeof(offset)));
             if (offset == minOffset.min)
             {
                 return offset;
@@ -464,6 +467,7 @@ version (unittest)
     import std.array : array;
     import std.range : iota, slide;
 
+    private
     void consume(A)(ref A a)
     {
         while(!a.empty)
@@ -849,8 +853,8 @@ unittest
                           const curr = t.front.ptr;
                           return prev != curr;
                       })
-             .map!(t => t.front.capacity);
-    consume(r);
+             .map!(t => t.front.capacity)
+             .array;
 
     v.length.shouldBe(n);
 }
