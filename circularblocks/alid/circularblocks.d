@@ -635,3 +635,43 @@ unittest
     c[].front.msg.shouldBe("hello");
     s.msg.shouldBe("initial value");
 }
+
+unittest
+{
+    // compact() should not reorder elements
+
+    import std.typecons : Flag, No, Yes;
+
+    enum n = 1024;
+    enum bufferSize = n / 10;
+    enum toRemove = 9 * bufferSize;
+    static assert (toRemove < n);
+
+    void test(Flag!"withBuffers" withBuffers)()
+    {
+        static if (withBuffers)
+        {
+            ubyte[bufferSize][2] buffers;
+            auto c = CircularBlocks!int(buffers);
+        }
+        else
+        {
+            auto c = CircularBlocks!int(bufferSize);
+        }
+
+        // Cause some empty blocks
+        iota(n).each!(i => c ~= i);
+        c.removeFrontN(toRemove);
+
+        // Ensure that we have caused multiple empty blocks
+        assert(c.heapBlockOccupancy.total - c.heapBlockOccupancy.occupied > 1);
+
+        c.compact();
+
+        auto expected = iota(toRemove, n);
+        c[].shouldBe(expected);
+    }
+
+    test!(Yes.withBuffers)();
+    test!(No.withBuffers)();
+}
