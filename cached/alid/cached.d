@@ -406,22 +406,20 @@ private struct ElementCache(R)
     in (sliceOffsets[id] <= elements.length,
         cachedError("Invalid element index", id, sliceOffsets[id], elements.length))
     {
-        // expandCache may change both elements and sliceOffsets.
-        while ((elements.length - sliceOffsets[id]) < needed)
-        {
-            expandCache();
-        }
-    }
-
-    // Expand the element cache by adding one more element from the source range
-    void expandCache()
-    in (!range.empty)
-    {
         import std.range : front, popFront;
 
-        // Transfer one element from the source range to the cache
-        elements.emplaceBack(range.front);
-        range.popFront();
+        const ready = elements.length - sliceOffsets[id];
+        if (ready >= needed)
+        {
+            return;
+        }
+
+        for (size_t missing = needed - ready; missing; --missing)
+        {
+            // Transfer one element from the source range to the cache
+            elements.emplaceBack(range.front);
+            range.popFront();
+        }
     }
 }
 
