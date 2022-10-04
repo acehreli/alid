@@ -217,28 +217,18 @@ public:
     /**
         Return a reference to an element
 
+        Accessing the elements with the InputRange interface returned from
+        opSlice is more efficient.
+
         Params:
 
             index = the _index of the element to return
     */
     ref inout(T) opIndex(size_t index) inout
-    in (index < length,
-        circularblocksError("Index is invalid for length", index, length))
+    in (index < length, circularblocksError("Index is invalid for length", index, length))
     {
-        // We don't want to use division because the blocks may have different
-        // lengths; for example, the first block may have few elements currently
-        // at an offset.
-        foreach (block; blocks)
-        {
-            if (block.length > index)
-            {
-                return block[index];
-            }
-
-            index -= block.length;
-        }
-
-        assert(false, "If the pre-condition held, we should have returned early.");
+        const blockId = computeBlockAndIndex(blocks, &index);
+        return blocks[blockId][index];
     }
 
     /// Number of elements in the block
@@ -541,6 +531,27 @@ unittest
 
     // No heap block should have been allocated
     c.heapBlockOccupancy.total.shouldBe(0);
+}
+
+// Takes the index of an element and returns the id of the block that hosts the
+// element. This function also modifies the 'index' parameter to indicate the
+// index inside the returned block.
+private size_t computeBlockAndIndex(B)(const(B) blocks, size_t * index)
+{
+    // We don't want to use division because the blocks may have different
+    // lengths; for example, the first block may have few elements currently
+    // at an offset.
+    foreach (blockId, block; blocks)
+    {
+        if (block.length > *index)
+        {
+            return blockId;
+        }
+
+        *index -= block.length;
+    }
+
+    assert(false, "Failed to return early.");
 }
 
 version (unittest)
