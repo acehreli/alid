@@ -26,6 +26,9 @@ private mixin NogcError!"circularblocks";
 */
 struct CircularBlocks(T)
 {
+    private @disable this();
+    private @disable this(this);
+
 private:
 
     import alid.blockreusable : ReusableBlock;
@@ -42,9 +45,6 @@ private:
 
     package size_t heapAllocations = 0;  // The number of times a block is
                                          // allocated from the GC heap
-
-    private @disable this();
-    private @disable this(this);
 
 public:
 
@@ -587,7 +587,7 @@ unittest
 
 unittest
 {
-    // Test the range interface
+    // Test full slice
 
     import std.algorithm : each;
 
@@ -627,7 +627,7 @@ unittest
     }
 
     auto s = S("hello");
-    assert(s.msg);
+    s.msg.shouldBe("hello");
 
     auto c = CircularBlocks!S(10);
     c.moveEmplace(s);
@@ -647,9 +647,9 @@ unittest
     enum toRemove = 9 * bufferSize;
     static assert (toRemove < n);
 
-    void test(Flag!"withBuffers" withBuffers)()
+    void test(Flag!"withUserBuffers" withUserBuffers)()
     {
-        static if (withBuffers)
+        static if (withUserBuffers)
         {
             ubyte[bufferSize][2] buffers;
             auto c = CircularBlocks!int(buffers);
@@ -672,6 +672,6 @@ unittest
         c[].shouldBe(expected);
     }
 
-    test!(Yes.withBuffers)();
-    test!(No.withBuffers)();
+    test!(Yes.withUserBuffers)();
+    test!(No.withUserBuffers)();
 }

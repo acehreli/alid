@@ -128,12 +128,16 @@ public:
     /**
         Calls `~=` to copy the specified _element
 
+        Even rvalues are copied. To move rvalues, either call `moveEmplace` or
+        use `~=` uniformly for both lvalues and rvalues.
+
         Params:
 
             element = the _element to copy
     */
     void copyBack(SourceT)(auto ref const(SourceT) element)
     {
+        // This function copies rvalues because 'auto ref' takes copies of them
         this ~= element;
     }
 
@@ -461,6 +465,11 @@ unittest
         this(this) {}
     }
 
+    bool isMoved(ref const(S) s)
+    {
+        return s == S.init;
+    }
+
     void test(T)()
     {
         enum length = 400;
@@ -471,14 +480,17 @@ unittest
 
         const n = T(7, 7);
         b~= n;
+        assert(!isMoved(n));
 
         b.copyBack(n);
+        assert(!isMoved(n));
         b.copyBack(T(8, 8));
         b.copyBack(n);
+        assert(!isMoved(n));
 
         auto m = T(3, 3);
         b.moveEmplace(m);
-        assert(m == S.init);
+        assert(isMoved(m));
     }
 
     alias Ts = AliasSeq!(S, const(S));
@@ -516,7 +528,6 @@ unittest
         auto b = ReusableBlock!(S, dtors)(new ubyte[100]);
 
         size_t count = 0;
-        assert(count == 0, "Invalid unittest");
 
         iota(elementCount).each!(_ => b ~= S(&count));
         b.removeFrontN(elementCount);

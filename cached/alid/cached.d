@@ -836,25 +836,28 @@ unittest
 
     int[] v;
 
-    auto r = iota(n)
-             .map!((i)
-                   {
-                       v ~= i;
-                       return Data(v.ptr, v.capacity);
-                   })
-             .cached    // The lambda should be executed once per object
-             .slide(2)  // [0,1], [1,2], [2,3], etc.
-             .filter!((t)
-                      {
-                          const prev = t.front.ptr;
-                          t.popFront();
-                          const curr = t.front.ptr;
-                          return prev != curr;
-                      })
-             .map!(t => t.front.capacity)
-             .array;
+    const r = iota(n)
+              .map!((i)
+                    {
+                        v ~= i;
+                        return Data(v.ptr, v.capacity);
+                    })
+              .cached    // The lambda should be executed once per object
+              .slide(2)  // [0,1], [1,2], [2,3], etc.
+              .filter!((t)
+                       {
+                           const prev = t.front.ptr;
+                           t.popFront();
+                           const curr = t.front.ptr;
+                           return prev != curr;
+                       })
+              .map!(t => t.front.capacity)
+              .array;
 
     v.length.shouldBe(n);
+
+    // Make 'dub lint' happy by using the variable
+    assert(r.length == r.length);
 }
 
 unittest
