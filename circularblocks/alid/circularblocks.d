@@ -238,7 +238,11 @@ public:
     }
 
     /**
-        A range providing access _to the specified elements
+        A range providing access _to the specified elements.
+
+        Although this range provides the RandomAccessRange interface, accessing
+        the elements with opIndex is less efficient than accessing the elements
+        with the InputRange interface.
 
         Params:
 
@@ -249,10 +253,78 @@ public:
     in (from <= to, circularblocksError("Range begin is greater than end", from, to))
     in (to - from <= length, circularblocksError("Range is too long", from, to, length))
     {
-        import std.algorithm : map;
-        import std.range : iota;
+        static struct Range
+        {
+            const(ReusableBlock!T)[] bks;
+            size_t bId;
+            size_t idx;
+            size_t bIdBack;
+            size_t idxBack; // This is 1 more than the actual value
+            size_t len;
 
-        return iota(from, to).map!(i => this[i]);
+            bool empty() const
+            {
+                return len == 0;
+            }
+
+            ref front() const
+            {
+                return bks[bId][idx];
+            }
+
+            void popFront()
+            {
+                --len;
+                ++idx;
+                if (idx == bks[bId].length) {
+                    ++bId;
+                    idx = 0;
+                }
+            }
+
+            size_t length() const
+            {
+                return len;
+            }
+
+            auto save()
+            {
+                return this;
+            }
+
+            ref back() const
+            in (idxBack > 0, circularblocksError("Zero idxBack"))
+            {
+                return bks[bIdBack][idxBack - 1];
+            }
+
+            void popBack()
+            {
+                --len;
+                --idxBack;
+                if (idxBack == 0) {
+                    --bIdBack;
+                    idxBack = bks[bIdBack].length; // Yes, 1 more
+                }
+            }
+
+            auto opIndex(size_t index)
+            in (index < len,
+                circularblocksError("Index is invalid for length", index, len))
+            {
+                index += idx;
+                const blockId = computeBlockAndIndex(bks, &index);
+                return bks[blockId][index];
+            }
+        }
+
+        size_t index = from;
+        const blockId = computeBlockAndIndex(blocks, &index);
+
+        size_t indexBack = to - 1;
+        const blockIdBack = computeBlockAndIndex(blocks, &indexBack);
+
+        return Range(blocks, blockId, index, blockIdBack, indexBack + 1, to - from);
     }
 
     /// A range to all elements; the same as `[0..$]`
@@ -616,6 +688,45 @@ unittest
     c[0..$].length.shouldBe(end - dropped);
     c[].shouldBe(iota(dropped, end));
     c[0..$].shouldBe(iota(dropped, end));
+}
+
+unittest
+{
+    // Test partial slice
+
+    import std.range : isRandomAccessRange, retro;
+
+    auto c = CircularBlocks!size_t(7);
+
+    enum begin = size_t(0);
+    enum end = size_t(100);
+    iota(begin, end).each!(i => c ~= i);
+
+    const from = begin + 5;
+    const to = end - 17;
+
+    auto expectedSlice = iota(from, to);
+
+    // 'save' should preserve iteration state
+
+    auto sl = c[from..to];
+    auto sl2 = sl.save();
+    sl.shouldBe(expectedSlice.save());
+
+    static assert (isRandomAccessRange!(typeof(sl)));
+
+    // Consume the original slice
+    while(!sl.empty)
+    {
+        sl.popFront();
+    }
+    // The saved state should still have the expected elements
+    sl2.shouldBe(expectedSlice.save());
+
+    // Test the opIndex of the slice interface
+    iota(to - from).map!(i => sl2[i]).shouldBe(expectedSlice.save());
+
+    sl2.retro.shouldBe(expectedSlice.save().retro);
 }
 
 unittest
