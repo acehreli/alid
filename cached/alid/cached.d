@@ -213,11 +213,16 @@ private struct ElementCache(R)
     bool emptyOf(in size_t id)
     in (isValidId_(id), mixin (idError_))
     {
-        if (!range.empty) {
-            expandAsNeeded(id, 1);
+        if (sliceOffsets[id] < elements.length) {
+            return false;
         }
 
-        return (sliceOffsets[id] == elements.length) && range.empty;
+        if (range.empty) {
+            return true;
+        }
+
+        const expanded = expandAsNeeded(id, 1);
+        return !expanded;
     }
 
     // The front element of the specified slice
@@ -400,8 +405,8 @@ private struct ElementCache(R)
         stats_.droppedElements += n;
     }
 
-    // Ensure that the specified slice has elements as needed
-    void expandAsNeeded(in size_t id, in size_t needed)
+    // Ensure that the specified slice has elements as needed. Returns 'true' if expanded.
+    auto expandAsNeeded(in size_t id, in size_t needed)
     in (isValidId_(id), mixin (idError_))
     in (sliceOffsets[id] <= elements.length,
         cachedError("Invalid element index", id, sliceOffsets[id], elements.length))
@@ -411,7 +416,7 @@ private struct ElementCache(R)
         const ready = elements.length - sliceOffsets[id];
         if (ready >= needed)
         {
-            return;
+            return false;
         }
 
         for (size_t missing = needed - ready; missing; --missing)
@@ -420,6 +425,8 @@ private struct ElementCache(R)
             elements.emplaceBack(range.front);
             range.popFront();
         }
+
+        return true;
     }
 }
 
